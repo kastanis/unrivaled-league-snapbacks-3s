@@ -1,0 +1,13 @@
+[project]
+name = "unrivaled"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "ipykernel>=7.1.0",
+    "ipython>=9.8.0",
+    "jupyterlab>=4.5.1",
+    "jupyterlab-templates>=0.5.3",
+    "jupytext>=1.18.1",
+]
