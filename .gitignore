@@ -12,3 +12,21 @@ analysis/archive/*.ipynb
 
 scratch/*
 !scratch/.gitkeep
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Streamlit
+.streamlit/secrets.toml
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Don't ignore data files - we want them tracked for Streamlit Cloud deployment

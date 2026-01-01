@@ -1,7 +1,7 @@
 [project]
 name = "unrivaled"
 version = "0.1.0"
-description = "Add your description here"
+description = "Unrivaled Fantasy Basketball League System"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
@@ -10,4 +10,7 @@ dependencies = [
     "jupyterlab>=4.5.1",
     "jupyterlab-templates>=0.5.3",
     "jupytext>=1.18.1",
+    "streamlit>=1.30.0",
+    "pandas>=2.1.0",
+    "plotly>=5.18.0",
 ]
