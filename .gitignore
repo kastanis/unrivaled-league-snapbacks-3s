@@ -30,3 +30,4 @@ __pycache__/
 *.swo
 
 # Don't ignore data files - we want them tracked for Streamlit Cloud deployment
+managers_REAL.csv
