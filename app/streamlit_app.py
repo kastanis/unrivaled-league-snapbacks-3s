@@ -96,9 +96,7 @@ st.markdown("""
 4. **Season-Long Competition** - Total points at end of season determines the winner!
 
 **Scoring System:**
-- 1PT Made = 1.0 points
-- 2PT Made = 2.5 points
-- FT Made = 1.0 points
+- Points Scored = 1.0 points
 - Rebound = 1.2 points
 - Assist = 1.0 points
 - Steal = 2.0 points
