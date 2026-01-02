@@ -87,8 +87,13 @@ def save_draft(draft_df: pd.DataFrame, rosters_df: pd.DataFrame) -> None:
 
 
 def get_available_players() -> pd.DataFrame:
-    """Get players not yet drafted."""
+    """Get players not yet drafted and not injured."""
     players = data_loader.load_players()
+
+    # Filter out injured players
+    if 'status' in players.columns:
+        players = players[players['status'] != 'injured']
+
     rosters = data_loader.load_rosters()
 
     if rosters is None or rosters.empty:
