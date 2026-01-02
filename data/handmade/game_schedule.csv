@@ -1,0 +1,57 @@
+game_id,game_date,game_time,home_team,away_team,status
+1,2026-01-05,13:00,Hive,Mist,scheduled
+2,2026-01-05,14:15,Laces,Vinyl,scheduled
+3,2026-01-05,20:00,Rose,Lunar Owls,scheduled
+4,2026-01-05,21:15,Breeze,Phantom,scheduled
+5,2026-01-09,19:30,Rose,Vinyl,scheduled
+6,2026-01-09,20:45,Hive,Breeze,scheduled
+7,2026-01-10,19:30,Phantom,Lunar Owls,scheduled
+8,2026-01-10,20:45,Mist,Laces,scheduled
+9,2026-01-11,19:30,Breeze,Rose,scheduled
+10,2026-01-11,20:45,Vinyl,Hive,scheduled
+11,2026-01-12,19:30,Phantom,Mist,scheduled
+12,2026-01-12,20:45,Lunar Owls,Laces,scheduled
+13,2026-01-16,19:30,Phantom,Laces,scheduled
+14,2026-01-16,20:45,Hive,Rose,scheduled
+15,2026-01-17,19:30,Lunar Owls,Mist,scheduled
+16,2026-01-17,20:45,Vinyl,Breeze,scheduled
+17,2026-01-18,19:30,Laces,Rose,scheduled
+18,2026-01-18,20:45,Phantom,Hive,scheduled
+19,2026-01-19,20:00,Mist,Breeze,scheduled
+20,2026-01-19,21:15,Lunar Owls,Vinyl,scheduled
+21,2026-01-23,19:30,Rose,Mist,scheduled
+22,2026-01-23,20:45,Vinyl,Phantom,scheduled
+23,2026-01-24,19:30,Breeze,Lunar Owls,scheduled
+24,2026-01-24,20:45,Laces,Hive,scheduled
+25,2026-01-25,13:00,Mist,Vinyl,scheduled
+26,2026-01-25,14:15,Rose,Phantom,scheduled
+27,2026-01-26,19:30,Hive,Lunar Owls,scheduled
+28,2026-01-26,20:45,Breeze,Laces,scheduled
+29,2026-01-30,19:30,Phantom,Breeze,scheduled
+30,2026-01-30,20:45,Lunar Owls,Rose,scheduled
+31,2026-01-31,16:30,Mist,Hive,scheduled
+32,2026-01-31,17:45,Vinyl,Laces,scheduled
+33,2026-02-01,19:30,Lunar Owls,Phantom,scheduled
+34,2026-02-01,20:45,Rose,Breeze,scheduled
+35,2026-02-02,19:30,Hive,Vinyl,scheduled
+36,2026-02-02,20:45,Laces,Mist,scheduled
+37,2026-02-06,19:30,Breeze,Hive,scheduled
+38,2026-02-06,20:45,Laces,Lunar Owls,scheduled
+39,2026-02-07,19:30,Vinyl,Rose,scheduled
+40,2026-02-07,20:45,Mist,Phantom,scheduled
+41,2026-02-09,19:30,Phantom,Vinyl,scheduled
+42,2026-02-09,20:45,Mist,Rose,scheduled
+43,2026-02-17,19:30,Hive,Laces,scheduled
+44,2026-02-17,20:45,Lunar Owls,Breeze,scheduled
+45,2026-02-20,19:30,Laces,Phantom,scheduled
+46,2026-02-20,20:45,Rose,Hive,scheduled
+47,2026-02-21,20:00,Breeze,Vinyl,scheduled
+48,2026-02-21,21:15,Mist,Lunar Owls,scheduled
+49,2026-02-22,19:30,Hive,Phantom,scheduled
+50,2026-02-22,20:45,Rose,Laces,scheduled
+51,2026-02-23,19:30,Vinyl,Lunar Owls,scheduled
+52,2026-02-23,20:45,Breeze,Mist,scheduled
+53,2026-02-27,13:00,Phantom,Rose,scheduled
+54,2026-02-27,14:15,Vinyl,Mist,scheduled
+55,2026-02-27,19:30,Laces,Breeze,scheduled
+56,2026-02-27,20:45,Lunar Owls,Hive,scheduled
