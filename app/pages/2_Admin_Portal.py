@@ -59,10 +59,27 @@ with tab1:
             st.session_state.draft_picks = []
             st.session_state.draft_order = managers['manager_id'].tolist()
 
+        # Show current draft order with randomize option
+        current_pick_num = len(st.session_state.draft_picks) + 1
+
+        if current_pick_num == 1:
+            # Show draft order and randomize button before first pick
+            st.info("**Draft Order:**")
+            order_display = []
+            for idx, mgr_id in enumerate(st.session_state.draft_order, 1):
+                mgr_name = managers[managers['manager_id'] == mgr_id]['manager_name'].iloc[0]
+                order_display.append(f"{idx}. {mgr_name}")
+            st.write(" → ".join(order_display))
+
+            if st.button("🎲 Randomize Draft Order"):
+                import random
+                st.session_state.draft_order = random.sample(managers['manager_id'].tolist(), len(managers))
+                st.rerun()
+
+            st.divider()
+
         # Generate snake order
         snake_order = draft_engine.create_snake_order(st.session_state.draft_order, num_rounds=DRAFT_ROUNDS)
-
-        current_pick_num = len(st.session_state.draft_picks) + 1
 
         if current_pick_num <= TOTAL_DRAFT_PICKS:
             # Get current pick info
