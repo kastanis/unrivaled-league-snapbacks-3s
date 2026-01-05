@@ -19,7 +19,7 @@ st.set_page_config(page_title="Admin Portal", page_icon="⚙️")
 st.title("⚙️ Admin Portal")
 
 # Tabs for admin functions
-tab1, tab2, tab3, tab4, tab5 = st.tabs(["Run Draft", "Upload Stats", "View All Rosters", "Recalculate Scores", "Injury Report"])
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["Run Draft", "Upload Stats", "View All Rosters", "Recalculate Scores", "Injury Report", "Manage Lineups"])
 
 with tab1:
     st.header("Run Draft")
@@ -403,3 +403,98 @@ with tab5:
 
     else:
         st.error("No players found. Check data/handmade/players.csv")
+
+with tab6:
+    st.header("Manage Lineups")
+
+    st.warning("⚠️ **Important:** Before pushing any code changes, download lineups to preserve them across redeploys!")
+
+    # Load lineups
+    lineups = data_loader.load_lineups()
+
+    if lineups is not None and not lineups.empty:
+        st.success(f"Found {len(lineups)} lineup entries")
+
+        # Download button
+        csv = lineups.to_csv(index=False)
+        st.download_button(
+            label="📥 Download lineups.csv",
+            data=csv,
+            file_name="lineups.csv",
+            mime="text/csv",
+            help="Download current lineups before pushing code to prevent data loss"
+        )
+
+        st.divider()
+
+        # Show lineups by manager
+        st.subheader("Current Lineups")
+
+        managers = data_loader.load_managers()
+        players = data_loader.load_players()
+
+        # Get unique dates
+        unique_dates = sorted(lineups['game_date'].unique(), reverse=True)
+
+        for game_date in unique_dates:
+            with st.expander(f"📅 Lineups for {game_date}"):
+                date_lineups = lineups[lineups['game_date'] == game_date]
+
+                for _, manager in managers.iterrows():
+                    manager_lineup = date_lineups[date_lineups['manager_id'] == manager['manager_id']]
+
+                    if not manager_lineup.empty:
+                        st.write(f"**{manager['team_name']}** ({manager['manager_name']})")
+
+                        # Merge with player details
+                        lineup_with_players = manager_lineup.merge(players, on='player_id', how='left')
+
+                        # Show active players
+                        active = lineup_with_players[lineup_with_players['status'] == 'active']
+                        if not active.empty:
+                            st.caption("Active:")
+                            for _, p in active.iterrows():
+                                st.write(f"  ✅ {p['player_name']} ({p['team']})")
+
+                        # Show bench players
+                        bench = lineup_with_players[lineup_with_players['status'] == 'bench']
+                        if not bench.empty:
+                            with st.expander("View Bench"):
+                                for _, p in bench.iterrows():
+                                    st.caption(f"  {p['player_name']} ({p['team']})")
+
+                        st.divider()
+    else:
+        st.info("No lineups set yet. Managers can set lineups in the Manager Portal.")
+
+    st.divider()
+
+    st.subheader("Upload Lineups")
+    st.caption("Use this to restore lineups after downloading them before a code push")
+
+    uploaded_lineups = st.file_uploader("Upload lineups.csv", type="csv", key="lineups_upload")
+
+    if uploaded_lineups is not None:
+        try:
+            uploaded_df = pd.read_csv(uploaded_lineups)
+
+            st.write("Preview:")
+            st.dataframe(uploaded_df.head(), use_container_width=True)
+
+            if st.button("Save Uploaded Lineups"):
+                # Validate columns
+                required_cols = ['lineup_id', 'manager_id', 'game_date', 'player_id', 'status', 'locked_at']
+                missing_cols = [col for col in required_cols if col not in uploaded_df.columns]
+
+                if missing_cols:
+                    st.error(f"❌ Missing required columns: {', '.join(missing_cols)}")
+                else:
+                    # Convert game_date to proper format
+                    uploaded_df['game_date'] = pd.to_datetime(uploaded_df['game_date']).dt.date
+
+                    # Save
+                    data_loader.save_lineups(uploaded_df)
+                    st.success("✅ Lineups uploaded successfully!")
+                    st.rerun()
+        except Exception as e:
+            st.error(f"Error reading file: {e}")
