@@ -64,8 +64,12 @@ with col2:
                 with zipfile.ZipFile(uploaded_zip, 'r') as zip_file:
                     base_dir = Path(__file__).parent.parent.parent / "data"
 
-                    # Extract all files
+                    # Extract all files (skip directories)
                     for file_info in zip_file.filelist:
+                        # Skip directory entries
+                        if file_info.is_dir():
+                            continue
+
                         # Get the relative path
                         relative_path = file_info.filename
                         target_path = base_dir / relative_path
