@@ -207,7 +207,13 @@ if selected_option != "-- Select Manager --":
             if not manager_scores.empty:
                 # Season total
                 total = manager_scores['total_points'].sum()
-                games = len(manager_scores)
+
+                # Count games (use games_count if available, otherwise count rows)
+                if 'games_count' in manager_scores.columns:
+                    games = manager_scores['games_count'].sum()
+                else:
+                    games = len(manager_scores)
+
                 avg = total / games if games > 0 else 0
 
                 col1, col2, col3 = st.columns(3)
@@ -260,7 +266,7 @@ if selected_option != "-- Select Manager --":
 
             display_standings.columns = [
                 'Rank', 'Team', 'Total Points',
-                'Games', 'Avg/Day'
+                'Games', 'Avg/Game'
             ]
 
             st.dataframe(
