@@ -117,6 +117,12 @@ def update_scores_for_date(game_date: date) -> None:
         print(f"No game stats found for {game_date}")
         return
 
+    # Auto-create default lineups for managers who have never set one
+    # This ensures all managers have a visible lineup and uses sticky logic for future days
+    created_count = lineup_manager.auto_create_missing_lineups(game_date)
+    if created_count > 0:
+        print(f"Auto-created default lineups for {created_count} manager(s)")
+
     # Add game_date column if not present
     if 'game_date' not in game_stats.columns:
         game_stats['game_date'] = game_date
