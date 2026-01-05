@@ -61,6 +61,7 @@ with col2:
     if uploaded_zip is not None:
         if st.button("Restore Data from Zip", use_container_width=True):
             try:
+                extracted_files = []
                 with zipfile.ZipFile(uploaded_zip, 'r') as zip_file:
                     base_dir = Path(__file__).parent.parent.parent / "data"
 
@@ -81,7 +82,11 @@ with col2:
                         with zip_file.open(file_info) as source, open(target_path, 'wb') as target:
                             target.write(source.read())
 
-                st.success("✅ All data restored successfully!")
+                        extracted_files.append(f"{relative_path} ({target_path.stat().st_size} bytes)")
+
+                st.success(f"✅ All data restored successfully! Extracted {len(extracted_files)} files:")
+                for f in extracted_files:
+                    st.text(f"  • {f}")
                 st.rerun()
             except Exception as e:
                 st.error(f"Error restoring data: {e}")
