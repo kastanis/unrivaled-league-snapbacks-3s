@@ -46,14 +46,20 @@ def generate_daily_recap(game_date: date) -> Optional[Dict]:
     # Manager of the day
     manager_of_day = None
     if not daily_manager_scores.empty:
-        top_manager_row = daily_manager_scores.loc[daily_manager_scores['total_points'].idxmax()]
+        # Aggregate by manager (in case multiple games on this date)
+        manager_day_totals = daily_manager_scores.groupby('manager_id').agg({
+            'total_points': 'sum',
+            'active_players_count': 'sum'
+        }).reset_index()
+
+        top_manager_row = manager_day_totals.loc[manager_day_totals['total_points'].idxmax()]
         top_manager = managers[managers['manager_id'] == top_manager_row['manager_id']]
 
         manager_of_day = {
             'manager_name': top_manager['manager_name'].iloc[0] if not top_manager.empty else 'Unknown',
             'team_name': top_manager['team_name'].iloc[0] if not top_manager.empty else 'Unknown',
             'total_points': round(top_manager_row['total_points'], 2),
-            'active_players_count': top_manager_row['active_players_count']
+            'active_players_count': int(top_manager_row['active_players_count'])
         }
 
     # Biggest bench mistake (benched someone who scored high)

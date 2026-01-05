@@ -223,9 +223,26 @@ if selected_option != "-- Select Manager --":
 
                 # Sort by date then game_id for proper order
                 if 'game_id' in manager_scores.columns:
-                    recent = manager_scores.sort_values(['game_date', 'game_id'], ascending=False).head(10)
-                    display_recent = recent[['game_date', 'game_id', 'total_points', 'active_players_count']].copy()
-                    display_recent.columns = ['Date', 'Game ID', 'Points', 'Active Players']
+                    recent = manager_scores.sort_values(['game_date', 'game_id'], ascending=False).head(10).copy()
+
+                    # Get game schedule to show matchups
+                    schedule = data_loader.load_game_schedule()
+                    recent = recent.merge(
+                        schedule[['game_id', 'home_team', 'away_team']],
+                        on='game_id',
+                        how='left'
+                    )
+
+                    # Create matchup column
+                    recent['matchup'] = recent['home_team'] + ' v ' + recent['away_team']
+
+                    # Get roster size to calculate benched players
+                    roster = draft_engine.get_manager_roster(manager_id)
+                    roster_size = len(roster) if not roster.empty else 0
+                    recent['benched_players'] = roster_size - recent['active_players_count']
+
+                    display_recent = recent[['game_date', 'matchup', 'total_points', 'active_players_count', 'benched_players']].copy()
+                    display_recent.columns = ['Date', 'Matchup', 'Points', 'Active Players', 'Benched Players']
                 else:
                     recent = manager_scores.sort_values('game_date', ascending=False).head(10)
                     display_recent = recent[['game_date', 'total_points', 'active_players_count']].copy()
@@ -239,7 +256,19 @@ if selected_option != "-- Select Manager --":
                 # Create a label for each game
                 chart_data = manager_scores.sort_values(['game_date', 'game_id'] if 'game_id' in manager_scores.columns else 'game_date').copy()
                 if 'game_id' in chart_data.columns:
-                    chart_data['game_label'] = chart_data['game_date'].astype(str) + ' G' + chart_data['game_id'].astype(str)
+                    # Get game schedule to show matchups
+                    schedule = data_loader.load_game_schedule()
+                    chart_data = chart_data.merge(
+                        schedule[['game_id', 'home_team', 'away_team']],
+                        on='game_id',
+                        how='left'
+                    )
+
+                    # Create user-friendly labels: "1/5 Hive v Mist"
+                    chart_data['game_label'] = (
+                        pd.to_datetime(chart_data['game_date']).dt.strftime('%-m/%-d') + ' ' +
+                        chart_data['home_team'] + ' v ' + chart_data['away_team']
+                    )
                     st.bar_chart(
                         chart_data,
                         x='game_label',
