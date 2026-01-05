@@ -7,6 +7,7 @@ from pathlib import Path
 from datetime import date
 import pandas as pd
 import io
+import zipfile
 
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
@@ -17,6 +18,71 @@ from etl.config import DRAFT_ROUNDS, TOTAL_DRAFT_PICKS
 st.set_page_config(page_title="Admin Portal", page_icon="⚙️")
 
 st.title("⚙️ Admin Portal")
+
+# Backup/Restore section at the top
+st.info("💾 **Data Backup:** Download all data before pushing code changes to prevent data loss on redeploy")
+
+col1, col2 = st.columns(2)
+
+with col1:
+    if st.button("📦 Download All Data (Zip)", type="primary", use_container_width=True):
+        # Create zip file in memory
+        zip_buffer = io.BytesIO()
+
+        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+            # Define all files to backup
+            processed_dir = Path(__file__).parent.parent.parent / "data/processed"
+            source_dir = Path(__file__).parent.parent.parent / "data/source"
+
+            # Add all processed CSVs
+            for csv_file in processed_dir.glob("*.csv"):
+                if csv_file.exists() and csv_file.stat().st_size > 0:
+                    zip_file.write(csv_file, f"processed/{csv_file.name}")
+
+            # Add game stats
+            game_stats_dir = source_dir / "game_stats"
+            if game_stats_dir.exists():
+                for stats_file in game_stats_dir.glob("*.csv"):
+                    if stats_file.exists() and stats_file.stat().st_size > 0:
+                        zip_file.write(stats_file, f"source/game_stats/{stats_file.name}")
+
+        zip_buffer.seek(0)
+
+        st.download_button(
+            label="⬇️ Click to Download",
+            data=zip_buffer,
+            file_name=f"fantasy_league_backup_{date.today()}.zip",
+            mime="application/zip"
+        )
+
+with col2:
+    uploaded_zip = st.file_uploader("📤 Upload Backup Zip", type="zip", key="backup_zip")
+
+    if uploaded_zip is not None:
+        if st.button("Restore Data from Zip", use_container_width=True):
+            try:
+                with zipfile.ZipFile(uploaded_zip, 'r') as zip_file:
+                    base_dir = Path(__file__).parent.parent.parent / "data"
+
+                    # Extract all files
+                    for file_info in zip_file.filelist:
+                        # Get the relative path
+                        relative_path = file_info.filename
+                        target_path = base_dir / relative_path
+
+                        # Create parent directories if needed
+                        target_path.parent.mkdir(parents=True, exist_ok=True)
+
+                        # Extract file
+                        with zip_file.open(file_info) as source, open(target_path, 'wb') as target:
+                            target.write(source.read())
+
+                st.success("✅ All data restored successfully!")
+                st.rerun()
+            except Exception as e:
+                st.error(f"Error restoring data: {e}")
+
+st.divider()
 
 # Tabs for admin functions
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["Run Draft", "Upload Stats", "View All Rosters", "Recalculate Scores", "Injury Report", "Manage Lineups"])
