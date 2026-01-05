@@ -347,7 +347,7 @@ def auto_create_missing_lineups(game_date: date) -> int:
             manager_roster = rosters[rosters['manager_id'] == manager_id]
             roster_player_ids = manager_roster['player_id'].tolist()
 
-            if not all_lineups or all_lineups.empty:
+            if all_lineups is None or all_lineups.empty:
                 lineup_id_start = 1
             else:
                 lineup_id_start = all_lineups['lineup_id'].max() + 1
