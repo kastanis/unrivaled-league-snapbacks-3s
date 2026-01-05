@@ -65,17 +65,31 @@ with col2:
                 with zipfile.ZipFile(uploaded_zip, 'r') as zip_file:
                     base_dir = Path(__file__).parent.parent.parent / "data"
 
-                    st.info(f"Base directory: {base_dir}")
-                    st.info(f"Files in zip: {[f.filename for f in zip_file.filelist]}")
-
-                    # Extract all files (skip directories)
+                    # Extract all files (skip directories and Mac metadata)
                     for file_info in zip_file.filelist:
                         # Skip directory entries
                         if file_info.is_dir():
                             continue
 
+                        # Skip Mac metadata files
+                        if '__MACOSX' in file_info.filename or '.DS_Store' in file_info.filename:
+                            continue
+
                         # Get the relative path
-                        relative_path = file_info.filename
+                        path_parts = Path(file_info.filename).parts
+
+                        # Find where 'processed' or 'source' starts
+                        # Strip any top-level directory (e.g., 'fantasy_league_backup_2026-01-05/')
+                        if 'processed' in path_parts:
+                            start_idx = path_parts.index('processed')
+                            relative_path = Path(*path_parts[start_idx:])
+                        elif 'source' in path_parts:
+                            start_idx = path_parts.index('source')
+                            relative_path = Path(*path_parts[start_idx:])
+                        else:
+                            # Skip files not in processed or source
+                            continue
+
                         target_path = base_dir / relative_path
 
                         # Create parent directories if needed
@@ -89,7 +103,7 @@ with col2:
                         if target_path.exists():
                             extracted_files.append(f"{relative_path} ({target_path.stat().st_size} bytes)")
                         else:
-                            extracted_files.append(f"{relative_path} (FAILED - file not found after extract)")
+                            extracted_files.append(f"{relative_path} (FAILED)")
 
                 st.success(f"✅ Extracted {len(extracted_files)} files:")
                 for f in extracted_files:
