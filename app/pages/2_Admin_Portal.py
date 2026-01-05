@@ -446,18 +446,24 @@ with tab6:
                     if not manager_lineup.empty:
                         st.write(f"**{manager['team_name']}** ({manager['manager_name']})")
 
-                        # Merge with player details
-                        lineup_with_players = manager_lineup.merge(players, on='player_id', how='left')
+                        # Merge with player details (use suffixes to avoid column name conflicts)
+                        # lineups 'status' = active/bench, players 'status' = active/injured
+                        lineup_with_players = manager_lineup.merge(
+                            players,
+                            on='player_id',
+                            how='left',
+                            suffixes=('_lineup', '_injury')
+                        )
 
                         # Show active players
-                        active = lineup_with_players[lineup_with_players['status'] == 'active']
+                        active = lineup_with_players[lineup_with_players['status_lineup'] == 'active']
                         if not active.empty:
                             st.caption("Active:")
                             for _, p in active.iterrows():
                                 st.write(f"  ✅ {p['player_name']} ({p['team']})")
 
                         # Show bench players
-                        bench = lineup_with_players[lineup_with_players['status'] == 'bench']
+                        bench = lineup_with_players[lineup_with_players['status_lineup'] == 'bench']
                         if not bench.empty:
                             with st.expander("View Bench"):
                                 for _, p in bench.iterrows():
