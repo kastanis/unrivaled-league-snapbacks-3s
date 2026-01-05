@@ -65,6 +65,9 @@ with col2:
                 with zipfile.ZipFile(uploaded_zip, 'r') as zip_file:
                     base_dir = Path(__file__).parent.parent.parent / "data"
 
+                    st.info(f"Base directory: {base_dir}")
+                    st.info(f"Files in zip: {[f.filename for f in zip_file.filelist]}")
+
                     # Extract all files (skip directories)
                     for file_info in zip_file.filelist:
                         # Skip directory entries
@@ -82,14 +85,21 @@ with col2:
                         with zip_file.open(file_info) as source, open(target_path, 'wb') as target:
                             target.write(source.read())
 
-                        extracted_files.append(f"{relative_path} ({target_path.stat().st_size} bytes)")
+                        # Verify file exists and get size
+                        if target_path.exists():
+                            extracted_files.append(f"{relative_path} ({target_path.stat().st_size} bytes)")
+                        else:
+                            extracted_files.append(f"{relative_path} (FAILED - file not found after extract)")
 
-                st.success(f"✅ All data restored successfully! Extracted {len(extracted_files)} files:")
+                st.success(f"✅ Extracted {len(extracted_files)} files:")
                 for f in extracted_files:
                     st.text(f"  • {f}")
-                st.rerun()
+
+                st.info("📌 Refresh the page manually to see updated data")
             except Exception as e:
                 st.error(f"Error restoring data: {e}")
+                import traceback
+                st.code(traceback.format_exc())
 
 st.divider()
 
