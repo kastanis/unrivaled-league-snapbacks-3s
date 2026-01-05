@@ -75,8 +75,16 @@ with col3:
     # Count unique games
     try:
         manager_scores = data_loader.load_manager_daily_scores()
-        if manager_scores is not None and not manager_scores.empty and 'game_id' in manager_scores.columns:
-            games_count = manager_scores['game_id'].nunique()
+        if manager_scores is not None and not manager_scores.empty:
+            if 'game_id' in manager_scores.columns:
+                # New format: count unique game_ids
+                games_count = manager_scores['game_id'].nunique()
+            elif 'games_count' in manager_scores.columns:
+                # Old format: sum games_count column (each row had multiple games)
+                games_count = int(manager_scores['games_count'].sum() / len(manager_scores['manager_id'].unique()))
+            else:
+                # Fallback: count unique dates
+                games_count = manager_scores['game_date'].nunique()
         else:
             games_count = 0
     except Exception:
