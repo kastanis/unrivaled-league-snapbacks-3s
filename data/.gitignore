@@ -4,5 +4,6 @@
 !handmade
 !html_reports
 !processed
+!processed/*.csv
 !public
 !source
