@@ -85,7 +85,7 @@ with col2:
 st.divider()
 
 # Tabs for admin functions
-tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["Run Draft", "Upload Stats", "View All Rosters", "Recalculate Scores", "Injury Report", "Manage Lineups"])
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["Run Draft", "Upload Stats", "View All Rosters", "Recalculate Scores", "Injury Report", "View Lineups"])
 
 with tab1:
     st.header("Run Draft")
@@ -471,27 +471,15 @@ with tab5:
         st.error("No players found. Check data/handmade/players.csv")
 
 with tab6:
-    st.header("Manage Lineups")
+    st.header("View Lineups")
 
-    st.warning("⚠️ **Important:** Before pushing any code changes, download lineups to preserve them across redeploys!")
+    st.info("💡 Use the backup/restore feature at the top of this page to download all data including lineups")
 
     # Load lineups
     lineups = data_loader.load_lineups()
 
     if lineups is not None and not lineups.empty:
         st.success(f"Found {len(lineups)} lineup entries")
-
-        # Download button
-        csv = lineups.to_csv(index=False)
-        st.download_button(
-            label="📥 Download lineups.csv",
-            data=csv,
-            file_name="lineups.csv",
-            mime="text/csv",
-            help="Download current lineups before pushing code to prevent data loss"
-        )
-
-        st.divider()
 
         # Show lineups by manager
         st.subheader("Current Lineups")
@@ -538,35 +526,3 @@ with tab6:
                         st.divider()
     else:
         st.info("No lineups set yet. Managers can set lineups in the Manager Portal.")
-
-    st.divider()
-
-    st.subheader("Upload Lineups")
-    st.caption("Use this to restore lineups after downloading them before a code push")
-
-    uploaded_lineups = st.file_uploader("Upload lineups.csv", type="csv", key="lineups_upload")
-
-    if uploaded_lineups is not None:
-        try:
-            uploaded_df = pd.read_csv(uploaded_lineups)
-
-            st.write("Preview:")
-            st.dataframe(uploaded_df.head(), use_container_width=True)
-
-            if st.button("Save Uploaded Lineups"):
-                # Validate columns
-                required_cols = ['lineup_id', 'manager_id', 'game_date', 'player_id', 'status', 'locked_at']
-                missing_cols = [col for col in required_cols if col not in uploaded_df.columns]
-
-                if missing_cols:
-                    st.error(f"❌ Missing required columns: {', '.join(missing_cols)}")
-                else:
-                    # Convert game_date to proper format
-                    uploaded_df['game_date'] = pd.to_datetime(uploaded_df['game_date']).dt.date
-
-                    # Save
-                    data_loader.save_lineups(uploaded_df)
-                    st.success("✅ Lineups uploaded successfully!")
-                    st.rerun()
-        except Exception as e:
-            st.error(f"Error reading file: {e}")
