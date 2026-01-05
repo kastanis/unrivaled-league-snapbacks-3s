@@ -76,7 +76,11 @@ with col3:
     try:
         scores = data_loader.load_manager_daily_scores()
         if scores is not None and not scores.empty:
-            games_count = scores['game_date'].nunique()
+            # Use games_count column if available, otherwise count unique dates
+            if 'games_count' in scores.columns:
+                games_count = scores['games_count'].sum()
+            else:
+                games_count = scores['game_date'].nunique()
         else:
             games_count = 0
     except Exception:
