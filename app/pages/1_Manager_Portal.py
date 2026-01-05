@@ -236,10 +236,39 @@ if selected_option != "-- Select Manager --":
                     # Create matchup column
                     recent['matchup'] = recent['home_team'] + ' v ' + recent['away_team']
 
-                    # Get roster size to calculate benched players
+                    # Calculate benched players who actually played
+                    # For each game, count roster players who played but were benched
+                    lineups = data_loader.load_lineups()
+                    player_scores = data_loader.load_player_game_scores()
                     roster = draft_engine.get_manager_roster(manager_id)
-                    roster_size = len(roster) if not roster.empty else 0
-                    recent['benched_players'] = roster_size - recent['active_players_count']
+                    roster_player_ids = roster['player_id'].tolist() if not roster.empty else []
+
+                    benched_counts = []
+                    for _, row in recent.iterrows():
+                        game_date = row['game_date']
+                        game_id = row['game_id']
+
+                        # Get lineup for this manager/date
+                        my_lineup = lineups[
+                            (lineups['manager_id'] == manager_id) &
+                            (lineups['game_date'] == game_date)
+                        ]
+
+                        # Get benched players from lineup
+                        benched_player_ids = my_lineup[my_lineup['status'] == 'bench']['player_id'].tolist()
+
+                        # Get players who actually played in this game
+                        game_player_scores = player_scores[player_scores['game_id'] == game_id]
+                        players_who_played = game_player_scores['player_id'].tolist()
+
+                        # Count benched players who are on roster AND played in this game
+                        benched_who_played = [
+                            p for p in benched_player_ids
+                            if p in players_who_played and p in roster_player_ids
+                        ]
+                        benched_counts.append(len(benched_who_played))
+
+                    recent['benched_players'] = benched_counts
 
                     display_recent = recent[['game_date', 'matchup', 'total_points', 'active_players_count', 'benched_players']].copy()
                     display_recent.columns = ['Date', 'Matchup', 'Points', 'Active Players', 'Benched Players']
