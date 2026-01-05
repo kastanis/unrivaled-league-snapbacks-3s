@@ -3,32 +3,39 @@
 import pandas as pd
 from datetime import datetime, date, time, timedelta
 from typing import List, Optional
+from zoneinfo import ZoneInfo
 from etl import data_loader
 from etl.config import ACTIVE_PLAYERS_PER_DAY
+
+# All game times in schedule are Eastern Time
+ET_TIMEZONE = ZoneInfo("America/New_York")
 
 
 def get_lineup_lock_time(game_date: date) -> Optional[datetime]:
     """
     Get the lineup lock time for a given date (first game of the day).
 
+    Game times in schedule are in ET. Returns timezone-aware datetime in ET.
+
     Args:
         game_date: Date to check
 
     Returns:
-        datetime when lineups lock, or None if no games scheduled
+        datetime when lineups lock (ET timezone), or None if no games scheduled
     """
     schedule = data_loader.load_game_schedule()
 
     games_today = schedule[schedule['game_date'] == game_date]
 
     if games_today.empty:
-        # No games scheduled, lock at end of day
-        return datetime.combine(game_date, time(23, 59, 59))
+        # No games scheduled, lock at end of day ET
+        return datetime.combine(game_date, time(23, 59, 59), tzinfo=ET_TIMEZONE)
 
-    # Find earliest game time
+    # Find earliest game time (stored in ET)
     first_game_time = games_today['game_time'].min()
 
-    return datetime.combine(game_date, first_game_time)
+    # Create timezone-aware datetime in ET
+    return datetime.combine(game_date, first_game_time, tzinfo=ET_TIMEZONE)
 
 
 def is_lineup_locked(game_date: date) -> bool:
@@ -50,7 +57,9 @@ def is_lineup_locked(game_date: date) -> bool:
     if lock_time is None:
         return False
 
-    return datetime.now() >= lock_time
+    # Compare using timezone-aware current time in ET
+    now_et = datetime.now(ET_TIMEZONE)
+    return now_et >= lock_time
 
 
 def get_time_until_lock(game_date: date) -> Optional[timedelta]:
@@ -71,7 +80,9 @@ def get_time_until_lock(game_date: date) -> Optional[timedelta]:
     if lock_time is None:
         return None
 
-    return lock_time - datetime.now()
+    # Calculate time difference using timezone-aware times
+    now_et = datetime.now(ET_TIMEZONE)
+    return lock_time - now_et
 
 
 def validate_lineup(manager_id: int, active_player_ids: List[int]) -> tuple[bool, str]:
