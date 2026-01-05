@@ -207,13 +207,7 @@ if selected_option != "-- Select Manager --":
             if not manager_scores.empty:
                 # Season total
                 total = manager_scores['total_points'].sum()
-
-                # Count games (use games_count if available, otherwise count rows)
-                if 'games_count' in manager_scores.columns:
-                    games = manager_scores['games_count'].sum()
-                else:
-                    games = len(manager_scores)
-
+                games = len(manager_scores)  # Each row is now one game
                 avg = total / games if games > 0 else 0
 
                 col1, col2, col3 = st.columns(3)
@@ -226,22 +220,39 @@ if selected_option != "-- Select Manager --":
 
                 # Recent scores
                 st.subheader("Recent Games")
-                recent = manager_scores.sort_values('game_date', ascending=False).head(10)
 
-                display_recent = recent[['game_date', 'total_points', 'active_players_count']].copy()
-                display_recent.columns = ['Date', 'Points', 'Active Players']
+                # Sort by date then game_id for proper order
+                if 'game_id' in manager_scores.columns:
+                    recent = manager_scores.sort_values(['game_date', 'game_id'], ascending=False).head(10)
+                    display_recent = recent[['game_date', 'game_id', 'total_points', 'active_players_count']].copy()
+                    display_recent.columns = ['Date', 'Game ID', 'Points', 'Active Players']
+                else:
+                    recent = manager_scores.sort_values('game_date', ascending=False).head(10)
+                    display_recent = recent[['game_date', 'total_points', 'active_players_count']].copy()
+                    display_recent.columns = ['Date', 'Points', 'Active Players']
 
                 st.dataframe(display_recent, hide_index=True, use_container_width=True)
 
-                # Simple bar chart
+                # Bar chart - one bar per game
                 st.subheader("Points by Game")
-                chart_data = manager_scores.sort_values('game_date')
-                st.bar_chart(
-                    chart_data,
-                    x='game_date',
-                    y='total_points',
-                    use_container_width=True
-                )
+
+                # Create a label for each game
+                chart_data = manager_scores.sort_values(['game_date', 'game_id'] if 'game_id' in manager_scores.columns else 'game_date').copy()
+                if 'game_id' in chart_data.columns:
+                    chart_data['game_label'] = chart_data['game_date'].astype(str) + ' G' + chart_data['game_id'].astype(str)
+                    st.bar_chart(
+                        chart_data,
+                        x='game_label',
+                        y='total_points',
+                        use_container_width=True
+                    )
+                else:
+                    st.bar_chart(
+                        chart_data,
+                        x='game_date',
+                        y='total_points',
+                        use_container_width=True
+                    )
             else:
                 st.info("No scores yet. Set lineups to start scoring!")
         else:

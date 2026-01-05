@@ -30,23 +30,13 @@ def calculate_standings() -> pd.DataFrame:
         return standings_df
 
     # Group by manager and aggregate
-    agg_dict = {
+    # Count number of games (rows) and sum total points
+    standings = manager_scores.groupby('manager_id').agg({
         'total_points': 'sum',
-    }
+        'game_id': 'count'  # Count number of games
+    }).reset_index()
 
-    # Sum games_count if available, otherwise count dates
-    if 'games_count' in manager_scores.columns:
-        agg_dict['games_count'] = 'sum'
-    else:
-        agg_dict['game_date'] = 'count'
-
-    standings = manager_scores.groupby('manager_id').agg(agg_dict).reset_index()
-
-    # Rename columns
-    if 'games_count' in manager_scores.columns:
-        standings.columns = ['manager_id', 'total_points', 'games_with_scores']
-    else:
-        standings.columns = ['manager_id', 'total_points', 'games_with_scores']
+    standings.columns = ['manager_id', 'total_points', 'games_with_scores']
 
     # Calculate average points per day
     standings['avg_points_per_day'] = (

@@ -72,18 +72,13 @@ with col2:
     st.metric("Players", NUM_PLAYERS)
 
 with col3:
-    # Count games played (unique games across all dates)
+    # Count unique games
     try:
-        player_scores = data_loader.load_player_game_scores()
-        if player_scores is not None and not player_scores.empty and 'game_id' in player_scores.columns:
-            games_count = player_scores['game_id'].nunique()
+        manager_scores = data_loader.load_manager_daily_scores()
+        if manager_scores is not None and not manager_scores.empty and 'game_id' in manager_scores.columns:
+            games_count = manager_scores['game_id'].nunique()
         else:
-            # Fallback to counting dates
-            scores = data_loader.load_manager_daily_scores()
-            if scores is not None and not scores.empty:
-                games_count = scores['game_date'].nunique()
-            else:
-                games_count = 0
+            games_count = 0
     except Exception:
         games_count = 0
 

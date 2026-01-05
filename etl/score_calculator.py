@@ -46,13 +46,13 @@ def calculate_player_fantasy_points(game_stats: pd.DataFrame, scoring_config: Op
 
 def calculate_manager_daily_scores(game_date: date) -> pd.DataFrame:
     """
-    Calculate total fantasy points for each manager on a specific date.
+    Calculate fantasy points for each manager for each game on a specific date.
 
     Args:
         game_date: Date to calculate scores for
 
     Returns:
-        DataFrame with manager_id, game_date, total_points, active_players_count
+        DataFrame with manager_id, game_id, game_date, total_points, active_players_count
     """
     # Load player game scores for this date
     player_scores = data_loader.load_player_game_scores()
@@ -65,11 +65,18 @@ def calculate_manager_daily_scores(game_date: date) -> pd.DataFrame:
     if daily_scores.empty:
         return pd.DataFrame()
 
+    # Get unique games on this date
+    if 'game_id' not in daily_scores.columns:
+        # Fallback: create single entry per manager for the date
+        game_ids = [1]
+    else:
+        game_ids = daily_scores['game_id'].unique()
+
     # Get all managers
     managers = data_loader.load_managers()
 
-    # Calculate scores for each manager
-    manager_daily_scores = []
+    # Calculate scores for each manager per game
+    manager_game_scores = []
 
     for _, manager in managers.iterrows():
         manager_id = manager['manager_id']
@@ -77,38 +84,36 @@ def calculate_manager_daily_scores(game_date: date) -> pd.DataFrame:
         # Get active players for this manager/date
         active_player_ids = lineup_manager.get_active_players_for_scoring(manager_id, game_date)
 
-        if not active_player_ids:
-            # No lineup set, score is 0
-            # Count games on this date
-            games_count = daily_scores['game_id'].nunique() if 'game_id' in daily_scores.columns else 1
+        for game_id in game_ids:
+            # Get scores for this specific game
+            game_scores = daily_scores[daily_scores['game_id'] == game_id] if 'game_id' in daily_scores.columns else daily_scores
 
-            manager_daily_scores.append({
+            if not active_player_ids:
+                # No lineup set, score is 0 for this game
+                manager_game_scores.append({
+                    'manager_id': manager_id,
+                    'game_id': game_id,
+                    'game_date': game_date,
+                    'total_points': 0.0,
+                    'active_players_count': 0
+                })
+                continue
+
+            # Filter to active players who played in this game
+            manager_scores = game_scores[game_scores['player_id'].isin(active_player_ids)]
+
+            total_points = manager_scores['fantasy_points'].sum()
+            active_count = len(manager_scores)
+
+            manager_game_scores.append({
                 'manager_id': manager_id,
+                'game_id': game_id,
                 'game_date': game_date,
-                'total_points': 0.0,
-                'active_players_count': 0,
-                'games_count': games_count
+                'total_points': round(total_points, 2),
+                'active_players_count': active_count
             })
-            continue
 
-        # Filter to active players who actually played
-        manager_scores = daily_scores[daily_scores['player_id'].isin(active_player_ids)]
-
-        total_points = manager_scores['fantasy_points'].sum()
-        active_count = len(manager_scores)
-
-        # Count number of unique games on this date
-        games_count = manager_scores['game_id'].nunique() if 'game_id' in manager_scores.columns else 1
-
-        manager_daily_scores.append({
-            'manager_id': manager_id,
-            'game_date': game_date,
-            'total_points': round(total_points, 2),
-            'active_players_count': active_count,
-            'games_count': games_count
-        })
-
-    return pd.DataFrame(manager_daily_scores)
+    return pd.DataFrame(manager_game_scores)
 
 
 def update_scores_for_date(game_date: date) -> None:
