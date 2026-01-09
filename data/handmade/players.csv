@@ -36,7 +36,7 @@ player_id,player_name,team,status
 35,Maddy Siegrist,Laces,active
 36,Naz Hillmon,Laces,active
 37,Kelsey Plum,Phantom,active
-38,Satou Sabally,Phantom,active
+38,Satou Sabally,Phantom,injured
 39,Aliyah Boston,Phantom,active
 40,Dana Evans,Phantom,active
 41,Natasha Cloud,Phantom,active
@@ -48,3 +48,10 @@ player_id,player_name,team,status
 47,Arike Ogunbowale,Mist,active
 48,Li Yueru,Mist,active
 49,Temi Fagbenle,Lunar Owls,active
+50,Tiffany Hayes,Phantom,active
+51,Hailey Van Lith,,development
+52,Aziaha James,,development
+53,Haley Jones,,development
+54,Emily Engstler,,development
+55,Laeticia Amihere,,development
+56,Makayla Timpson,,development

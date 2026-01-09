@@ -1,0 +1,9 @@
+timestamp,manager_id,game_date,transaction_type,active_players,active_player_ids
+2026-01-05T07:22:32.320220,1,2026-01-05,lineup_change,"Allisha Gray, Skylar Diggins, Erica Wheeler","44, 20, 28"
+2026-01-05T16:08:04.527416,6,2026-01-05,lineup_change,"Chelsea Gray, Jackie Young, Monique Billings","13, 31, 12"
+2026-01-05T16:08:19.752081,6,2026-01-05,lineup_change,"Chelsea Gray, Jackie Young, Monique Billings","13, 31, 12"
+2026-01-05T16:08:43.394722,6,2026-01-05,lineup_change,"Chelsea Gray, Jackie Young, Monique Billings","13, 31, 12"
+2026-01-05T16:17:49.761522,7,2026-01-05,lineup_change,"Marina Mabrey, Arike Ogunbowale, Natisha Hiedeman","21, 47, 10"
+2026-01-05T16:47:04.771183,8,2026-01-05,lineup_change,"Sonia Citron, Azura Stevens, Aaliyah Edwards","8, 15, 22"
+2026-01-05T17:06:30.912732,2,2026-01-05,lineup_change,"Breanna Stewart, Kate Martin, Dominique Malonga","43, 5, 3"
+2026-01-05T17:48:15.978615,4,2026-01-05,lineup_change,"Alyssa Thomas, Naz Hillmon, Courtney Williams","33, 36, 25"
