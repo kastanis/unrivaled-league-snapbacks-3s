@@ -138,9 +138,11 @@ if selected_option != "-- Select Manager --":
         if not current_lineup.empty and 'status' in current_lineup.columns and 'player_id' in current_lineup.columns:
             active_ids = current_lineup[current_lineup['status'] == 'active']['player_id'].tolist()
             lineup_status = "custom"
+            st.write(f"✅ **Using saved lineup - active_ids: {active_ids}**")
         else:
             # No lineup set for this date - will use sticky lineup logic
             active_ids = lineup_manager.get_active_players_for_scoring(manager_id, lineup_date)
+            st.write(f"⚠️ **Using fallback logic - active_ids: {active_ids}**")
 
             # Determine if this is from previous day or default
             all_lineups = data_loader.load_lineups()
