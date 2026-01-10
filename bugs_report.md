@@ -1,33 +1,30 @@
 # Bugs Report
 
-## Bug #1: Games Played Count Mismatch on Main Page
+## Bug #1: Games Played Count on Main Page
 
 ### Description
-The "Games Played" metric on the main page was counting games with uploaded scores instead of total games that have occurred according to the schedule.
+The "Games Played" metric on the main page should show the count of games that have uploaded stats.
 
 ### Status
-✅ **FIXED** in [app/streamlit_app.py:74-89](app/streamlit_app.py#L74-L89)
+✅ **FIXED** in [app/streamlit_app.py:74-86](app/streamlit_app.py#L74-L86)
 
 ### Fix Applied
-Changed from counting unique `game_id` values in `manager_daily_scores` to counting games from the schedule where `game_date <= today`:
+Counts unique `game_id` values from `manager_daily_scores` (games with uploaded stats):
 
 ```python
-# Count games from schedule that have been played (date has passed or is today)
+# Count total games that have uploaded stats
 try:
-    from datetime import date
-    schedule = data_loader.load_game_schedule()
-    if schedule is not None and not schedule.empty:
-        today = date.today()
-        # Count games where date <= today
-        games_played = schedule[schedule['game_date'] <= today]
-        games_count = len(games_played)
+    daily_scores = data_loader.load_manager_daily_scores()
+    if daily_scores is not None and not daily_scores.empty:
+        # Count unique game_ids in the scores data
+        games_count = daily_scores['game_id'].nunique()
     else:
         games_count = 0
 except Exception:
     games_count = 0
 ```
 
-**Result**: If 6 games have occurred (based on schedule dates), metric now shows 6 instead of 4.
+**Result**: Shows the actual number of games with uploaded stats. Since game_id is sequential and unique across the entire season (games 1-4 on Jan 5, games 5-6 on Jan 9, etc.), counting unique game_ids gives the total games played.
 
 ---
 

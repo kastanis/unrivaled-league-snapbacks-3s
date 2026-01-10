@@ -72,15 +72,12 @@ with col2:
     st.metric("Players", NUM_PLAYERS)
 
 with col3:
-    # Count games from schedule that have been played (date has passed or is today)
+    # Count total games that have uploaded stats
     try:
-        from datetime import date
-        schedule = data_loader.load_game_schedule()
-        if schedule is not None and not schedule.empty:
-            today = date.today()
-            # Count games where date <= today
-            games_played = schedule[schedule['game_date'] <= today]
-            games_count = len(games_played)
+        daily_scores = data_loader.load_manager_daily_scores()
+        if daily_scores is not None and not daily_scores.empty:
+            # Count unique game_ids in the scores data
+            games_count = daily_scores['game_id'].nunique()
         else:
             games_count = 0
     except Exception:
