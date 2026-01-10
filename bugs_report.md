@@ -64,128 +64,52 @@ for idx, recap in enumerate(recaps):
 ## Bug #2: Locked Lineup Not Displaying Correctly After Page Refresh
 
 ### Description
-When a lineup is locked and saved for a specific date, the Manager Portal does not display the saved lineup when the page refreshes or when navigating back to that date from another date. Instead, it shows a default lineup (first 3 players) even though the correct lineup is saved in the database.
+When a lineup is locked and saved for a specific date, the Manager Portal does not display the saved lineup when the page refreshes or when navigating back to that date from another date. Instead, it shows incorrect checkboxes even though the correct lineup is saved in the database.
 
-### Steps to Reproduce
-1. Set a lineup for a specific date (e.g., 2026-01-05)
+### Status
+✅ **FIXED** in [app/pages/1_Manager_Portal.py:169](app/pages/1_Manager_Portal.py#L169)
+
+### Steps to Reproduce (Original Bug)
+1. Set a lineup for a specific date (e.g., 2026-01-09)
 2. Press "Save Lineup" button
-3. Lineup is successfully saved (confirmed in `data/processed/lineups.csv`)
+3. Lineup is successfully saved (confirmed in `lineups.csv`)
 4. Date becomes locked
 5. Refresh the page OR navigate to a different date and come back
-6. **Bug**: The lineup displayed shows default players instead of the saved lineup
+6. **Bug**: The checkboxes show different players than the saved lineup
 
-### Expected Behavior
-The saved lineup should be displayed with the correct active/benched players that were selected and locked.
+### Root Cause (Discovered via Debug Output)
 
-### Actual Behavior
-The UI shows a default lineup (first 3 players alphabetically by player_id) instead of the saved lineup.
+**The lineup data was loading correctly**, but the checkbox UI state was being cached incorrectly by Streamlit.
 
-### Observed Evidence
-- The lineup IS correctly saved in `lineups.csv` with proper `status` (active/bench) values
-- Transaction logs correctly capture the lineup changes
-- Manager scores are calculated correctly using the saved active players
-- The issue is only with the **display** of the lineup in the Manager Portal
+Debug output revealed:
+- Lineup loaded correctly: ✅
+- `active_ids` extracted correctly: `[1, 50, 29]` ✅
+- But checkboxes showed: Burton (46), Hayes (50), Sykes (32) ❌
 
-### Root Cause Analysis
-
-The bug is in the lineup loading logic in [app/pages/1_Manager_Portal.py:124-140](app/pages/1_Manager_Portal.py#L124-L140):
-
+**Root Cause**: Streamlit checkbox keys were not date-specific:
 ```python
-# Get current lineup
-current_lineup = lineup_manager.get_manager_lineup(manager_id, lineup_date)
-
-if not current_lineup.empty and 'status' in current_lineup.columns and 'player_id' in current_lineup.columns:
-    active_ids = current_lineup[current_lineup['status'] == 'active']['player_id'].tolist()
-    lineup_status = "custom"
-else:
-    # No lineup set for this date - will use sticky lineup logic
-    active_ids = lineup_manager.get_active_players_for_scoring(manager_id, lineup_date)
-    # ... falls back to previous or default lineup
+# OLD CODE (buggy):
+key=f"player_{player['player_id']}"  # Same key for all dates!
 ```
 
-**The condition on line 126 is failing silently**, causing the code to fall into the `else` block and use fallback logic instead of the saved lineup.
+When navigating between dates, Streamlit's session state would preserve checkbox state from previous dates because the keys were identical across all dates. For example, if player 46 was checked on Jan 8, the checkbox with key `player_46` would remain checked when switching to Jan 9, even if the lineup data said player 46 should be benched.
 
-### Possible Causes
+### Fix Applied
 
-1. **Player Merge Issue**: The `get_manager_lineup()` function ([etl/lineup_manager.py:123-152](etl/lineup_manager.py#L123-L152)) merges lineup data with player data:
-   ```python
-   manager_lineup = manager_lineup.merge(
-       players,
-       on='player_id',
-       how='left',
-       suffixes=('', '_injury')
-   )
-   ```
-   If a player in the lineup doesn't exist in `players.csv` at the time of loading (e.g., player 50 wasn't in players.csv when code deployed), the merge could produce unexpected results.
+Changed checkbox keys to include the date, making each date's checkboxes independent:
 
-2. **Streamlit Caching**: The `data_loader.load_players()` function is cached with `@st.cache_data(ttl=3600)`. If players.csv was updated but the cache hasn't expired, the merge might fail for newly added players.
-
-3. **DataFrame Structure After Merge**: The merge operation might be changing the DataFrame structure in a way that makes the condition fail (e.g., renaming columns, changing dtypes).
-
-### Proposed Fix
-
-**Option 1: Add Debug Logging**
-Add debug output to understand why the condition fails:
 ```python
-# DEBUG: Log lineup loading
-if not current_lineup.empty:
-    st.write(f"DEBUG - Columns: {list(current_lineup.columns)}")
-    st.write(f"DEBUG - Has status: {'status' in current_lineup.columns}")
-    st.write(f"DEBUG - Has player_id: {'player_id' in current_lineup.columns}")
+# NEW CODE (fixed):
+key=f"player_{player['player_id']}_{lineup_date}"  # Unique key per date!
 ```
 
-**Option 2: Load Lineup More Defensively**
-Instead of relying on the merged DataFrame, load the raw lineup data directly:
-```python
-# Get current lineup (raw from CSV, no merge)
-raw_lineups = data_loader.load_lineups(lineup_date)
-if raw_lineups is not None and not raw_lineups.empty:
-    manager_lineup = raw_lineups[raw_lineups['manager_id'] == manager_id]
-    if not manager_lineup.empty:
-        active_ids = manager_lineup[manager_lineup['status'] == 'active']['player_id'].tolist()
-        lineup_status = "custom"
-    else:
-        # Use fallback logic
-        active_ids = lineup_manager.get_active_players_for_scoring(manager_id, lineup_date)
-else:
-    # Use fallback logic
-    active_ids = lineup_manager.get_active_players_for_scoring(manager_id, lineup_date)
-```
+**Result**: Each date now has its own checkbox state. When you load Jan 9, the checkboxes reflect Jan 9's saved lineup. When you load Jan 10, the checkboxes reflect Jan 10's lineup. No more cross-contamination.
 
-**Option 3: Fix the Merge**
-Ensure the merge preserves the critical columns by being more explicit:
-```python
-def get_manager_lineup(manager_id: int, game_date: date) -> pd.DataFrame:
-    lineups = data_loader.load_lineups(game_date)
-
-    if lineups is None or lineups.empty:
-        return pd.DataFrame()
-
-    manager_lineup = lineups[lineups['manager_id'] == manager_id].copy()
-
-    if not manager_lineup.empty:
-        players = data_loader.load_players()
-        # Preserve essential columns before merge
-        essential_cols = ['lineup_id', 'manager_id', 'game_date', 'player_id', 'status', 'locked_at']
-        manager_lineup = manager_lineup.merge(
-            players,
-            on='player_id',
-            how='left',
-            suffixes=('', '_injury')
-        )
-        # Ensure essential columns are still present
-        for col in essential_cols:
-            if col not in manager_lineup.columns:
-                raise ValueError(f"Critical column '{col}' lost during merge")
-
-    return manager_lineup
-```
-
-### Priority
-**Medium** - The lineup is being saved and used for scoring correctly, but the user experience is poor when they can't see their locked lineup.
-
-### Workaround
-None currently. Users must trust that their saved lineup is locked even though the UI shows default players.
+### Impact
+- ✅ Saved lineups now display correctly after page refresh
+- ✅ Navigating between dates shows correct lineup for each date
+- ✅ No impact on CSV data, transaction logs, or scoring (they were already working)
+- ✅ No breaking changes to existing saved lineups
 
 ---
 
