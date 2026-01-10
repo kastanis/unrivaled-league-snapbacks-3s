@@ -123,6 +123,18 @@ if selected_option != "-- Select Manager --":
         # Get current lineup
         current_lineup = lineup_manager.get_manager_lineup(manager_id, lineup_date)
 
+        # DEBUG - Temporary diagnostic output (remove after fixing)
+        st.write("🔍 **Debug Info - Lineup Loading:**")
+        st.write(f"- Lineup empty? {current_lineup.empty}")
+        st.write(f"- Lineup shape: {current_lineup.shape}")
+        if not current_lineup.empty:
+            st.write(f"- Columns: {list(current_lineup.columns)}")
+            st.write(f"- Has 'status' column? {'status' in current_lineup.columns}")
+            st.write(f"- Has 'player_id' column? {'player_id' in current_lineup.columns}")
+            st.write("- First few rows:")
+            st.dataframe(current_lineup.head())
+        st.divider()
+
         if not current_lineup.empty and 'status' in current_lineup.columns and 'player_id' in current_lineup.columns:
             active_ids = current_lineup[current_lineup['status'] == 'active']['player_id'].tolist()
             lineup_status = "custom"
