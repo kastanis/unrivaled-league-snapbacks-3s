@@ -72,19 +72,15 @@ with col2:
     st.metric("Players", NUM_PLAYERS)
 
 with col3:
-    # Count unique games
+    # Count games from schedule that have been played (date has passed or is today)
     try:
-        manager_scores = data_loader.load_manager_daily_scores()
-        if manager_scores is not None and not manager_scores.empty:
-            if 'game_id' in manager_scores.columns:
-                # New format: count unique game_ids
-                games_count = manager_scores['game_id'].nunique()
-            elif 'games_count' in manager_scores.columns:
-                # Old format: sum games_count column (each row had multiple games)
-                games_count = int(manager_scores['games_count'].sum() / len(manager_scores['manager_id'].unique()))
-            else:
-                # Fallback: count unique dates
-                games_count = manager_scores['game_date'].nunique()
+        from datetime import date
+        schedule = data_loader.load_game_schedule()
+        if schedule is not None and not schedule.empty:
+            today = date.today()
+            # Count games where date <= today
+            games_played = schedule[schedule['game_date'] <= today]
+            games_count = len(games_played)
         else:
             games_count = 0
     except Exception:
@@ -94,16 +90,17 @@ with col3:
 
 # Weekly Recap
 st.divider()
-st.subheader("Recent Game Highlights")
+st.subheader("Recent Game Day Highlights")
 
 try:
     recaps = weekly_recap.get_recent_recaps(num_days=3)
 
     if recaps:
-        for recap in recaps:
+        for idx, recap in enumerate(recaps):
             game_date = recap['game_date']
 
-            with st.expander(f"📅 {game_date.strftime('%B %d, %Y')}", expanded=len(recaps) == 1):
+            # Keep the latest (first) date expanded
+            with st.expander(f"📅 {game_date.strftime('%B %d, %Y')}", expanded=(idx == 0)):
                 col1, col2, col3 = st.columns(3)
 
                 with col1:
