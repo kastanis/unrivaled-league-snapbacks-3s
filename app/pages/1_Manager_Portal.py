@@ -225,28 +225,24 @@ if selected_option != "-- Select Manager --":
                 if 'game_id' in manager_scores.columns:
                     recent = manager_scores.sort_values(['game_date', 'game_id'], ascending=False).head(10).copy()
 
-                    # DEBUG - show data before merge
-                    st.write("🔍 DEBUG - Before merge:")
-                    st.write(f"Recent game_date type: {type(recent['game_date'].iloc[0])}")
-                    st.write(f"Recent game_id type: {type(recent['game_id'].iloc[0])}")
-                    st.dataframe(recent[['game_date', 'game_id']].head())
+                    # Convert game_id to int
+                    recent['game_id'] = recent['game_id'].astype(int)
 
                     # Get game schedule to show matchups
                     schedule = data_loader.load_game_schedule()
-                    st.write("🔍 DEBUG - Schedule:")
-                    st.write(f"Schedule game_date type: {type(schedule['game_date'].iloc[0])}")
-                    st.write(f"Schedule game_id type: {type(schedule['game_id'].iloc[0])}")
-                    st.dataframe(schedule[['game_date', 'game_id', 'home_team', 'away_team']].head(10))
+
+                    # Create game number within each date for matching
+                    # This handles case where uploaded game_id resets per day (1,2,3,4)
+                    # but schedule has sequential game_ids (1-56)
+                    recent['game_num'] = recent.groupby('game_date')['game_id'].rank(method='dense').astype(int)
+                    schedule_copy = schedule.copy()
+                    schedule_copy['game_num'] = schedule_copy.groupby('game_date')['game_id'].rank(method='dense').astype(int)
 
                     recent = recent.merge(
-                        schedule[['game_date', 'game_id', 'home_team', 'away_team']],
-                        on=['game_date', 'game_id'],
+                        schedule_copy[['game_date', 'game_num', 'home_team', 'away_team']],
+                        on=['game_date', 'game_num'],
                         how='left'
                     )
-
-                    # DEBUG - show after merge
-                    st.write("🔍 DEBUG - After merge:")
-                    st.dataframe(recent[['game_date', 'game_id', 'home_team', 'away_team']].head())
 
                     # Create matchup column
                     recent['matchup'] = recent['home_team'] + ' v ' + recent['away_team']
@@ -300,11 +296,20 @@ if selected_option != "-- Select Manager --":
                 # Create a label for each game
                 chart_data = manager_scores.sort_values(['game_date', 'game_id'] if 'game_id' in manager_scores.columns else 'game_date').copy()
                 if 'game_id' in chart_data.columns:
+                    # Convert game_id to int
+                    chart_data['game_id'] = chart_data['game_id'].astype(int)
+
                     # Get game schedule to show matchups
                     schedule = data_loader.load_game_schedule()
+
+                    # Create game number within each date for matching
+                    chart_data['game_num'] = chart_data.groupby('game_date')['game_id'].rank(method='dense').astype(int)
+                    schedule_copy = schedule.copy()
+                    schedule_copy['game_num'] = schedule_copy.groupby('game_date')['game_id'].rank(method='dense').astype(int)
+
                     chart_data = chart_data.merge(
-                        schedule[['game_date', 'game_id', 'home_team', 'away_team']],
-                        on=['game_date', 'game_id'],
+                        schedule_copy[['game_date', 'game_num', 'home_team', 'away_team']],
+                        on=['game_date', 'game_num'],
                         how='left'
                     )
 
