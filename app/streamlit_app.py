@@ -76,8 +76,8 @@ with col3:
     try:
         daily_scores = data_loader.load_manager_daily_scores()
         if daily_scores is not None and not daily_scores.empty:
-            # Count unique game_ids in the scores data
-            games_count = daily_scores['game_id'].nunique()
+            # Count unique (game_date, game_id) combinations
+            games_count = len(daily_scores[['game_date', 'game_id']].drop_duplicates())
         else:
             games_count = 0
     except Exception:

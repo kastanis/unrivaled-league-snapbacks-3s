@@ -228,8 +228,8 @@ if selected_option != "-- Select Manager --":
                     # Get game schedule to show matchups
                     schedule = data_loader.load_game_schedule()
                     recent = recent.merge(
-                        schedule[['game_id', 'home_team', 'away_team']],
-                        on='game_id',
+                        schedule[['game_date', 'game_id', 'home_team', 'away_team']],
+                        on=['game_date', 'game_id'],
                         how='left'
                     )
 
@@ -288,8 +288,8 @@ if selected_option != "-- Select Manager --":
                     # Get game schedule to show matchups
                     schedule = data_loader.load_game_schedule()
                     chart_data = chart_data.merge(
-                        schedule[['game_id', 'home_team', 'away_team']],
-                        on='game_id',
+                        schedule[['game_date', 'game_id', 'home_team', 'away_team']],
+                        on=['game_date', 'game_id'],
                         how='left'
                     )
 
