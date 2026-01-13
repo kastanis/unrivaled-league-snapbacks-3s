@@ -225,13 +225,28 @@ if selected_option != "-- Select Manager --":
                 if 'game_id' in manager_scores.columns:
                     recent = manager_scores.sort_values(['game_date', 'game_id'], ascending=False).head(10).copy()
 
+                    # DEBUG - show data before merge
+                    st.write("🔍 DEBUG - Before merge:")
+                    st.write(f"Recent game_date type: {type(recent['game_date'].iloc[0])}")
+                    st.write(f"Recent game_id type: {type(recent['game_id'].iloc[0])}")
+                    st.dataframe(recent[['game_date', 'game_id']].head())
+
                     # Get game schedule to show matchups
                     schedule = data_loader.load_game_schedule()
+                    st.write("🔍 DEBUG - Schedule:")
+                    st.write(f"Schedule game_date type: {type(schedule['game_date'].iloc[0])}")
+                    st.write(f"Schedule game_id type: {type(schedule['game_id'].iloc[0])}")
+                    st.dataframe(schedule[['game_date', 'game_id', 'home_team', 'away_team']].head(10))
+
                     recent = recent.merge(
                         schedule[['game_date', 'game_id', 'home_team', 'away_team']],
                         on=['game_date', 'game_id'],
                         how='left'
                     )
+
+                    # DEBUG - show after merge
+                    st.write("🔍 DEBUG - After merge:")
+                    st.dataframe(recent[['game_date', 'game_id', 'home_team', 'away_team']].head())
 
                     # Create matchup column
                     recent['matchup'] = recent['home_team'] + ' v ' + recent['away_team']
