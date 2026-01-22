@@ -330,6 +330,10 @@ with tab2:
                         # Calculate scores
                         score_calculator.update_scores_for_date(game_date)
 
+                        # Update game_id mapping
+                        data_loader.update_game_id_mapping()
+                        st.cache_data.clear()  # Clear cache to reload mapping
+
                         # Update standings
                         standings_updater.update_standings()
 

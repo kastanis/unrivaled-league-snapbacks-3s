@@ -50,6 +50,44 @@ def load_game_id_mapping() -> pd.DataFrame:
     return df
 
 
+def update_game_id_mapping() -> None:
+    """Update game_id_mapping.csv to include all dates in player_game_scores."""
+    # Load data
+    schedule = load_game_schedule()
+    player_scores = load_player_game_scores()
+
+    if player_scores is None or player_scores.empty:
+        return
+
+    # Generate mapping for all dates
+    mapping_rows = []
+    for game_date in sorted(player_scores['game_date'].unique()):
+        # Get player game_ids for this date (sorted)
+        player_game_ids = sorted(player_scores[player_scores['game_date'] == game_date]['game_id'].unique())
+
+        # Get schedule games for this date (sorted by game_id)
+        schedule_games = schedule[schedule['game_date'] == game_date].sort_values('game_id')
+
+        # Map them in order
+        for idx, player_gid in enumerate(player_game_ids):
+            if idx < len(schedule_games):
+                schedule_gid = schedule_games.iloc[idx]['game_id']
+                home = schedule_games.iloc[idx]['home_team']
+                away = schedule_games.iloc[idx]['away_team']
+
+                mapping_rows.append({
+                    'game_date': game_date,
+                    'player_game_id': player_gid,
+                    'schedule_game_id': schedule_gid,
+                    'matchup': f"{home} v {away}"
+                })
+
+    # Save mapping
+    mapping_df = pd.DataFrame(mapping_rows)
+    mapping_path = HANDMADE_DIR / "game_id_mapping.csv"
+    mapping_df.to_csv(mapping_path, index=False)
+
+
 def load_draft_results() -> Optional[pd.DataFrame]:
     """Load draft results if exists."""
     path = PROCESSED_DIR / "draft_results.csv"
