@@ -35,6 +35,17 @@ def calculate_player_averages(player_id: int, last_n_games: Optional[int] = None
             'total_fantasy_points': 0.0
         }
 
+    # Filter out DNP games if status column exists
+    if 'status' in player_data.columns:
+        player_data = player_data[player_data['status'] == 'played']
+
+    if player_data.empty:
+        return {
+            'games_played': 0,
+            'avg_fantasy_points': 0.0,
+            'total_fantasy_points': 0.0
+        }
+
     # Sort by date
     if 'game_date' in player_data.columns:
         player_data = player_data.sort_values('game_date', ascending=False)
@@ -108,12 +119,22 @@ def get_all_player_stats() -> pd.DataFrame:
         recent_stats = calculate_player_averages(player_id, last_n_games=5)
         trend = get_player_trend(player_id)
 
+        # Get last game points (excluding DNP)
+        player_data = player_scores[player_scores['player_id'] == player_id]
+        # Filter out DNP games if status column exists
+        if 'status' in player_data.columns:
+            player_data = player_data[player_data['status'] == 'played']
+        if 'game_date' in player_data.columns:
+            player_data = player_data.sort_values('game_date', ascending=False)
+        last_game_points = player_data['fantasy_points'].iloc[0] if not player_data.empty else 0.0
+
         player_stats.append({
             'player_id': player_id,
             'player_name': player_info['player_name'].iloc[0],
             'team': player_info['team'].iloc[0],
             'games_played': season_stats['games_played'],
             'season_avg': season_stats['avg_fantasy_points'],
+            'last_game_points': round(last_game_points, 2),
             'last_5_avg': recent_stats['avg_fantasy_points'],
             'total_points': season_stats['total_fantasy_points'],
             'trend': trend
