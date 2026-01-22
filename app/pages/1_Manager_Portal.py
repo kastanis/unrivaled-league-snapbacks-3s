@@ -281,8 +281,8 @@ if selected_option != "-- Select Manager --":
 
                     recent['benched_players'] = benched_counts
 
-                    display_recent = recent[['game_date', 'matchup', 'total_points', 'active_players_count', 'benched_players']].copy()
-                    display_recent.columns = ['Date', 'Matchup', 'Points', 'Active Players', 'Benched Players']
+                    display_recent = recent[['game_date', 'matchup', 'total_points', 'active_players_count']].copy()
+                    display_recent.columns = ['Date', 'Matchup', 'Points', 'Active Players']
                 else:
                     recent = manager_scores.sort_values('game_date', ascending=False).head(10)
                     display_recent = recent[['game_date', 'total_points', 'active_players_count']].copy()
@@ -318,6 +318,8 @@ if selected_option != "-- Select Manager --":
                         pd.to_datetime(chart_data['game_date']).dt.strftime('%-m/%-d') + ' ' +
                         chart_data['home_team'] + ' v ' + chart_data['away_team']
                     )
+                    # Sort by game_date and game_id to ensure chronological order
+                    chart_data = chart_data.sort_values(['game_date', 'game_id'])
                     st.bar_chart(
                         chart_data,
                         x='game_label',
@@ -391,18 +393,18 @@ if selected_option != "-- Select Manager --":
                 # Add trend emoji
                 my_players['trend_emoji'] = my_players['trend'].map({
                     'hot': '🔥',
-                    'cold': '🧊',
+                    'cold': '🥶',
                     'neutral': '-'
                 })
 
                 display_my = my_players[[
                     'player_name', 'team', 'games_played',
-                    'season_avg', 'last_5_avg', 'total_points', 'trend_emoji'
+                    'season_avg', 'last_game_points', 'last_5_avg', 'total_points', 'trend_emoji'
                 ]].copy()
 
                 display_my.columns = [
                     'Player', 'Team', 'GP',
-                    'Season Avg', 'Last 5 Avg', 'Total Pts', 'Trend'
+                    'Season Avg', 'Last Game', 'Last 5 Avg', 'Total Pts', 'Trend'
                 ]
 
                 st.dataframe(
@@ -417,7 +419,7 @@ if selected_option != "-- Select Manager --":
             # Add trend emoji
             all_stats['trend_emoji'] = all_stats['trend'].map({
                 'hot': '🔥',
-                'cold': '🧊',
+                'cold': '🥶',
                 'neutral': '-'
             })
 
