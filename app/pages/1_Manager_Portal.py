@@ -313,16 +313,22 @@ if selected_option != "-- Select Manager --":
                         how='left'
                     )
 
-                    # Create user-friendly labels: "1/5 Hive v Mist"
+                    # Sort by game_date and game_id to ensure chronological order
+                    chart_data = chart_data.sort_values(['game_date', 'game_id']).reset_index(drop=True)
+
+                    # Create user-friendly labels with sequence number to preserve order
+                    # Format: "1/5 Hive v Mist" but with hidden sequence prefix
+                    chart_data['seq'] = range(len(chart_data))
                     chart_data['game_label'] = (
                         pd.to_datetime(chart_data['game_date']).dt.strftime('%-m/%-d') + ' ' +
                         chart_data['home_team'] + ' v ' + chart_data['away_team']
                     )
-                    # Sort by game_date and game_id to ensure chronological order
-                    chart_data = chart_data.sort_values(['game_date', 'game_id'])
+
+                    # Set index to force order (Streamlit respects DataFrame index order)
+                    chart_data_display = chart_data.set_index('game_label')
+
                     st.bar_chart(
-                        chart_data,
-                        x='game_label',
+                        chart_data_display,
                         y='total_points',
                         use_container_width=True
                     )
@@ -425,12 +431,12 @@ if selected_option != "-- Select Manager --":
 
             display_all = all_stats[[
                 'player_name', 'team', 'games_played',
-                'season_avg', 'last_5_avg', 'total_points', 'trend_emoji'
+                'season_avg', 'last_game_points', 'last_5_avg', 'total_points', 'trend_emoji'
             ]].copy()
 
             display_all.columns = [
                 'Player', 'Team', 'GP',
-                'Season Avg', 'Last 5 Avg', 'Total Pts', 'Trend'
+                'Season Avg', 'Last Game', 'Last 5 Avg', 'Total Pts', 'Trend'
             ]
 
             st.dataframe(
