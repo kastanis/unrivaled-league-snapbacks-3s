@@ -115,3 +115,98 @@ key=f"player_{player['player_id']}_{lineup_date}"  # Unique key per date!
 - Scoring calculations use the correct saved lineups
 - This is purely a display issue in the Manager Portal
 - Related to player 50 (Tiffany Hayes) replacement - if player didn't exist in cache when lineup was loaded, merge could fail
+
+---
+
+## Feature #1: Bench Points Visualization
+
+### Description
+Added a stacked bar chart to the Manager Portal's "Points by Game" section that shows:
+- **Orange bars (bottom)**: Points left on the bench from players who actually played (status='played')
+- **Blue bars (top)**: Active points earned by starting lineup
+
+This helps managers visualize missed opportunities where they benched players who scored points.
+
+### Status
+✅ **COMPLETED** in commits 29c001c, c5adc8b, 97b8df0
+
+### Files Modified
+
+#### 1. [data/handmade/game_id_mapping.csv](data/handmade/game_id_mapping.csv)
+**Purpose**: Maps between two incompatible game_id systems
+- `player_game_id`: Resets to 1,2 for each date (used in player_game_scores)
+- `schedule_game_id`: Sequential 1-56 for entire season (used in game_schedule)
+
+**Why needed**:
+- Schedule uses consecutive game_ids (1-56)
+- player_game_scores uses resetting game_ids (1,2 per date)
+- manager_daily_scores inherits player_game_scores game_ids
+- Chart needs to match games correctly to calculate bench points
+
+**Auto-update**: File regenerates automatically when new game stats are added via Admin Portal
+
+#### 2. [etl/data_loader.py](etl/data_loader.py)
+**Changes**:
+- Added `load_game_id_mapping()` (lines 45-50): Loads the mapping CSV with caching
+- Added `update_game_id_mapping()` (lines 53-88): Regenerates entire mapping from current data
+  - Reads player_game_scores and game_schedule
+  - Matches games by date and order
+  - Saves complete mapping with matchup info
+
+#### 3. [app/pages/1_Manager_Portal.py](app/pages/1_Manager_Portal.py)
+**Changes**:
+- Added `import altair as alt` (line 6): For stacked bar chart
+- Replaced simple bar chart with stacked bar implementation (lines ~319-425):
+  - Loads game_id_mapping, lineups, player_game_scores
+  - Identifies benched players by team matchup
+  - Filters for status='played' (excludes DNP)
+  - Calculates bench points per game
+  - Creates Altair stacked bar chart with proper color ordering
+
+#### 4. [app/pages/2_Admin_Portal.py](app/pages/2_Admin_Portal.py)
+**Changes**:
+- Added auto-update call after saving game stats (lines 333-335):
+  ```python
+  # Update game_id mapping
+  data_loader.update_game_id_mapping()
+  st.cache_data.clear()  # Clear cache to reload mapping
+  ```
+- Ensures mapping stays in sync with new game data
+
+### How to Rollback (If Feature Breaks)
+
+**Option 1: Remove just the auto-update (keeps feature but requires manual mapping updates)**
+```bash
+# Remove lines 333-335 from app/pages/2_Admin_Portal.py
+# Keep everything else
+```
+
+**Option 2: Completely remove bench points feature**
+```bash
+# Revert to commit before bench points:
+git revert 97b8df0  # Remove altair import fix
+git revert c5adc8b  # Remove auto-update
+git revert 29c001c  # Remove bench points chart
+
+# Or hard reset (if no other changes):
+git reset --hard <commit-before-29c001c>
+```
+
+**Option 3: Fix specific issues**
+- If mapping is wrong: Delete `data/handmade/game_id_mapping.csv` and re-add game stats to regenerate
+- If colors reversed: Swap domain order in Manager Portal chart code (lines 418-419)
+- If DNPs counted: Check status filter in bench points calculation (line ~382)
+- If cache issues: Clear browser cache or add `st.cache_data.clear()` calls
+
+### Key Design Decisions
+1. **Used mapping table** instead of fixing underlying data structure (cleaner, less invasive)
+2. **Mapping auto-updates** when adding game stats (Option 2 from user choice)
+3. **Only counts played games** for bench points (status='played'), not DNPs
+4. **Orange (bench) on bottom, blue (active) on top** - visual hierarchy shows active first
+5. **Matches by team** - only counts bench points from players whose team played in that game
+
+### Common Issues
+- **"NameError: alt is not defined"**: Missing `import altair as alt` (fixed in 97b8df0)
+- **Wrong bench points**: Check game_id_mapping is up to date, run update_game_id_mapping()
+- **Cache not clearing**: Ensure `st.cache_data.clear()` is called after mapping updates
+- **Feature not showing**: Check if lineups exist for the selected manager/date
