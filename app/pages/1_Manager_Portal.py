@@ -322,19 +322,109 @@ if selected_option != "-- Select Manager --":
                         chart_data['home_team'] + ' v ' + chart_data['away_team']
                     )
 
+                    # Calculate bench points using game_id mapping
+                    lineups_all = data_loader.load_lineups()
+                    player_game_scores = data_loader.load_player_game_scores()
+                    players = data_loader.load_players()
+                    game_id_mapping = data_loader.load_game_id_mapping()
+
+                    if lineups_all is not None and player_game_scores is not None and players is not None:
+                        # Get benched players for this manager
+                        manager_lineups = lineups_all[lineups_all['manager_id'] == manager_id]
+                        benched = manager_lineups[manager_lineups['status'] == 'bench']
+
+                        # Calculate bench points per game
+                        bench_points_by_game = []
+                        for _, game_row in chart_data.iterrows():
+                            player_game_id = game_row['game_id']  # This is from manager_scores (1, 2 per date)
+                            game_date = game_row['game_date']
+                            home_team = game_row['home_team']
+                            away_team = game_row['away_team']
+
+                            # Get benched players for this date
+                            benched_date = benched[benched['game_date'] == game_date]['player_id'].tolist()
+
+                            # Filter benched players whose team is playing in this game
+                            benched_in_game = []
+                            for player_id in benched_date:
+                                player_info = players[players['player_id'] == player_id]
+                                if not player_info.empty:
+                                    player_team = player_info['team'].iloc[0]
+                                    if player_team == home_team or player_team == away_team:
+                                        benched_in_game.append(player_id)
+
+                            # Get scores for benched players who played in this game
+                            # Match using game_date and player_game_id from player_game_scores
+                            benched_scores = player_game_scores[
+                                (player_game_scores['game_date'] == game_date) &
+                                (player_game_scores['game_id'] == player_game_id) &
+                                (player_game_scores['player_id'].isin(benched_in_game)) &
+                                (player_game_scores['status'] == 'played')
+                            ]
+
+                            bench_total = benched_scores['fantasy_points'].sum() if not benched_scores.empty else 0.0
+                            bench_points_by_game.append({
+                                'game_id': player_game_id,
+                                'game_date': game_date,
+                                'bench_points': bench_total
+                            })
+
+                        bench_df = pd.DataFrame(bench_points_by_game)
+
+                        # Merge bench points with chart data
+                        chart_data = chart_data.merge(
+                            bench_df,
+                            on=['game_id', 'game_date'],
+                            how='left'
+                        )
+                        chart_data['bench_points'] = chart_data['bench_points'].fillna(0)
+                    else:
+                        chart_data['bench_points'] = 0
+
+                    # Rename total_points to active_points for clarity
+                    chart_data['active_points'] = chart_data['total_points']
+
+                    # Create stacked data for visualization
+                    chart_long = pd.DataFrame([])
+                    for _, row in chart_data.iterrows():
+                        chart_long = pd.concat([
+                            chart_long,
+                            pd.DataFrame([{
+                                'game_label': row['game_label'],
+                                'point_type': 'Bench Points',
+                                'points': row['bench_points']
+                            }]),
+                            pd.DataFrame([{
+                                'game_label': row['game_label'],
+                                'point_type': 'Active Points',
+                                'points': row['active_points']
+                            }])
+                        ], ignore_index=True)
+
                     # Convert game_label to ordered categorical to preserve sort order
-                    chart_data['game_label'] = pd.Categorical(
-                        chart_data['game_label'],
-                        categories=chart_data['game_label'].tolist(),
+                    unique_labels = chart_data['game_label'].unique().tolist()
+                    chart_long['game_label'] = pd.Categorical(
+                        chart_long['game_label'],
+                        categories=unique_labels,
                         ordered=True
                     )
 
-                    st.bar_chart(
-                        chart_data,
-                        x='game_label',
-                        y='total_points',
-                        use_container_width=True
+                    # Create Altair stacked bar chart
+                    chart = alt.Chart(chart_long).mark_bar().encode(
+                        x=alt.X('game_label:N', title='Game', sort=None),
+                        y=alt.Y('points:Q', title='Fantasy Points'),
+                        color=alt.Color('point_type:N',
+                                      scale=alt.Scale(
+                                          domain=['Bench Points', 'Active Points'],
+                                          range=['#FFB366', '#1f77b4']  # Orange for bench (bottom), blue for active (top)
+                                      ),
+                                      legend=alt.Legend(title='Point Type')),
+                        order=alt.Order('point_type:N', sort='ascending')  # Bench on bottom, active on top
+                    ).properties(
+                        height=400
                     )
+
+                    st.altair_chart(chart, use_container_width=True)
                 else:
                     st.bar_chart(
                         chart_data,

@@ -1,0 +1,21 @@
+game_date,player_game_id,schedule_game_id,matchup
+2026-01-05,1,1,Hive v Mist
+2026-01-05,2,2,Laces v Vinyl
+2026-01-05,3,3,Rose v Lunar Owls
+2026-01-05,4,4,Breeze v Phantom
+2026-01-09,1,5,Rose v Vinyl
+2026-01-09,2,6,Hive v Breeze
+2026-01-10,1,7,Phantom v Lunar Owls
+2026-01-10,2,8,Mist v Laces
+2026-01-11,1,9,Breeze v Rose
+2026-01-11,2,10,Vinyl v Hive
+2026-01-12,1,11,Phantom v Mist
+2026-01-12,2,12,Lunar Owls v Laces
+2026-01-16,1,13,Phantom v Laces
+2026-01-16,2,14,Hive v Rose
+2026-01-17,1,15,Lunar Owls v Mist
+2026-01-17,2,16,Vinyl v Breeze
+2026-01-18,1,17,Laces v Rose
+2026-01-18,2,18,Phantom v Hive
+2026-01-19,1,19,Mist v Breeze
+2026-01-19,2,20,Lunar Owls v Vinyl

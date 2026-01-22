@@ -42,6 +42,14 @@ def load_game_schedule() -> pd.DataFrame:
     return df
 
 
+@st.cache_data(ttl=3600)  # Cache for 1 hour
+def load_game_id_mapping() -> pd.DataFrame:
+    """Load mapping between player_game_scores game_ids and schedule game_ids."""
+    df = pd.read_csv(HANDMADE_DIR / "game_id_mapping.csv")
+    df['game_date'] = pd.to_datetime(df['game_date']).dt.date
+    return df
+
+
 def load_draft_results() -> Optional[pd.DataFrame]:
     """Load draft results if exists."""
     path = PROCESSED_DIR / "draft_results.csv"
