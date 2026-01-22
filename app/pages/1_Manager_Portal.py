@@ -316,19 +316,22 @@ if selected_option != "-- Select Manager --":
                     # Sort by game_date and game_id to ensure chronological order
                     chart_data = chart_data.sort_values(['game_date', 'game_id']).reset_index(drop=True)
 
-                    # Create user-friendly labels with sequence number to preserve order
-                    # Format: "1/5 Hive v Mist" but with hidden sequence prefix
-                    chart_data['seq'] = range(len(chart_data))
+                    # Create user-friendly labels: "1/5 Hive v Mist"
                     chart_data['game_label'] = (
                         pd.to_datetime(chart_data['game_date']).dt.strftime('%-m/%-d') + ' ' +
                         chart_data['home_team'] + ' v ' + chart_data['away_team']
                     )
 
-                    # Set index to force order (Streamlit respects DataFrame index order)
-                    chart_data_display = chart_data.set_index('game_label')
+                    # Convert game_label to ordered categorical to preserve sort order
+                    chart_data['game_label'] = pd.Categorical(
+                        chart_data['game_label'],
+                        categories=chart_data['game_label'].tolist(),
+                        ordered=True
+                    )
 
                     st.bar_chart(
-                        chart_data_display,
+                        chart_data,
+                        x='game_label',
                         y='total_points',
                         use_container_width=True
                     )
