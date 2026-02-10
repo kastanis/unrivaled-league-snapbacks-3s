@@ -55,8 +55,12 @@ with tab1:
 with tab2:
     st.header("Tournament Leaderboard")
 
-    # Get leaderboard
-    leaderboard = score_calculator.get_tournament_leaderboard()
+    # Get leaderboard with error handling
+    try:
+        leaderboard = score_calculator.get_tournament_leaderboard()
+    except Exception as e:
+        st.error(f"Error loading leaderboard: {e}")
+        leaderboard = pd.DataFrame()
 
     if leaderboard.empty:
         st.warning("No tournament picks or scores available yet.")

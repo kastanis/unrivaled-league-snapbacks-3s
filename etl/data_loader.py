@@ -269,7 +269,11 @@ def save_transaction_log(df: pd.DataFrame) -> None:
 @st.cache_data(ttl=3600)
 def load_tournament_scoring_config() -> pd.DataFrame:
     """Load tournament scoring configuration (no assists)."""
-    return pd.read_csv(HANDMADE_DIR / "tournament_scoring_config.csv")
+    path = HANDMADE_DIR / "tournament_scoring_config.csv"
+    if path.exists():
+        return pd.read_csv(path)
+    # Fallback to regular scoring config if tournament config doesn't exist
+    return load_scoring_config()
 
 
 def load_tournament_game_stats(round_num: Optional[int] = None) -> pd.DataFrame:
