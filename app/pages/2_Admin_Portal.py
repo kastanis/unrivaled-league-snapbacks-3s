@@ -359,7 +359,9 @@ with tab2:
     - `GAME_WINNER` - 1 if scored game winner, 0 otherwise
     - `DUNK` - Number of dunks
 
-    **Optional:** `game_date` (will be added automatically if missing)
+    **Optional columns:**
+    - `game_date` - Will be added automatically if missing
+    - `status` - Set to 'played' or 'dnp' to manually control player status. If omitted, status is auto-detected (all zeros = dnp)
     """)
 
     # Example CSV download

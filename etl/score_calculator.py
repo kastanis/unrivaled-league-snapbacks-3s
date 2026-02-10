@@ -34,16 +34,19 @@ def calculate_player_fantasy_points(game_stats: pd.DataFrame, scoring_config: Op
         if stat_category in game_stats.columns:
             game_stats['fantasy_points'] += game_stats[stat_category].fillna(0) * points_per_unit
 
-    # Detect DNP: if all counting stats are 0, mark as DNP
-    stat_cols = ['PTS', 'REB', 'AST', 'STL', 'BLK', 'TOV', 'PF']
-    available_cols = [col for col in stat_cols if col in game_stats.columns]
+    # Handle status column: preserve manual status if provided, otherwise auto-detect DNP
+    if 'status' not in game_stats.columns:
+        # Auto-detect DNP: if all counting stats are 0, mark as DNP
+        stat_cols = ['PTS', 'REB', 'AST', 'STL', 'BLK', 'TOV', 'PF']
+        available_cols = [col for col in stat_cols if col in game_stats.columns]
 
-    if available_cols:
-        total_stats = sum(game_stats[col].fillna(0) for col in available_cols)
-        game_stats['status'] = total_stats.apply(lambda x: 'dnp' if x == 0 else 'played')
-    else:
-        # If we can't determine, assume played
-        game_stats['status'] = 'played'
+        if available_cols:
+            total_stats = sum(game_stats[col].fillna(0) for col in available_cols)
+            game_stats['status'] = total_stats.apply(lambda x: 'dnp' if x == 0 else 'played')
+        else:
+            # If we can't determine, assume played
+            game_stats['status'] = 'played'
+    # else: status column already exists, preserve it from the CSV upload
 
     # Return essential columns
     result_columns = ['game_id', 'player_id', 'fantasy_points', 'status']
