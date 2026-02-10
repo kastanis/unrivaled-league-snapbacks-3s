@@ -250,3 +250,117 @@ def get_player_recent_scores(player_id: int, num_games: int = 5) -> pd.DataFrame
     player_recent = player_recent.sort_values('game_date', ascending=False).head(num_games)
 
     return player_recent
+
+
+def calculate_tournament_fantasy_points(game_stats: pd.DataFrame) -> pd.DataFrame:
+    """
+    Calculate fantasy points for tournament games (no assists).
+
+    Args:
+        game_stats: DataFrame with player stats
+
+    Returns:
+        DataFrame with player_id, round, fantasy_points
+    """
+    scoring_config = data_loader.load_tournament_scoring_config()
+
+    # Create scoring dictionary (no AST in tournament config)
+    scoring_dict = dict(zip(
+        scoring_config['stat_category'],
+        scoring_config['points_per_unit']
+    ))
+
+    game_stats = game_stats.copy()
+    game_stats['fantasy_points'] = 0.0
+
+    for stat_category, points_per_unit in scoring_dict.items():
+        if stat_category in game_stats.columns:
+            game_stats['fantasy_points'] += game_stats[stat_category].fillna(0) * points_per_unit
+
+    # Round to 2 decimal places
+    game_stats['fantasy_points'] = game_stats['fantasy_points'].round(2)
+
+    # Return essential columns
+    result_columns = ['player_id', 'fantasy_points']
+    if 'round' in game_stats.columns:
+        result_columns.insert(1, 'round')
+
+    return game_stats[result_columns]
+
+
+def update_tournament_scores() -> pd.DataFrame:
+    """
+    Recalculate all tournament scores from uploaded stats.
+
+    Returns:
+        DataFrame with player_id, round, fantasy_points for all rounds
+    """
+    # Load all tournament game stats
+    all_stats = data_loader.load_tournament_game_stats()
+
+    if all_stats.empty:
+        return pd.DataFrame()
+
+    # Calculate fantasy points
+    scores = calculate_tournament_fantasy_points(all_stats)
+
+    # Save to file
+    data_loader.save_tournament_scores(scores)
+
+    return scores
+
+
+def get_tournament_leaderboard() -> pd.DataFrame:
+    """
+    Get tournament leaderboard with total fantasy points per player.
+
+    Returns:
+        DataFrame with manager info, player info, and total FP
+    """
+    # Load tournament picks and scores
+    picks = data_loader.load_tournament_picks()
+    scores = data_loader.load_tournament_scores()
+
+    if picks is None or picks.empty:
+        return pd.DataFrame()
+
+    # Load reference data
+    managers = data_loader.load_managers()
+    players = data_loader.load_players()
+
+    # Build leaderboard
+    leaderboard = picks.merge(managers, on='manager_id')
+    leaderboard = leaderboard.merge(
+        players[['player_id', 'player_name', 'team']],
+        on='player_id'
+    )
+
+    # Add scores if available
+    if scores is not None and not scores.empty:
+        # Get total FP per player
+        player_totals = scores.groupby('player_id')['fantasy_points'].sum().reset_index()
+        player_totals.columns = ['player_id', 'total_fp']
+
+        # Get per-round breakdown
+        if 'round' in scores.columns:
+            round_scores = scores.pivot_table(
+                index='player_id',
+                columns='round',
+                values='fantasy_points',
+                aggfunc='sum'
+            ).reset_index()
+            round_scores.columns = ['player_id'] + [f'round_{int(c)}_fp' for c in round_scores.columns[1:]]
+            player_totals = player_totals.merge(round_scores, on='player_id', how='left')
+
+        leaderboard = leaderboard.merge(player_totals, on='player_id', how='left')
+        leaderboard['total_fp'] = leaderboard['total_fp'].fillna(0)
+    else:
+        leaderboard['total_fp'] = 0.0
+
+    # Sort by total FP descending
+    leaderboard = leaderboard.sort_values('total_fp', ascending=False).reset_index(drop=True)
+
+    # Add rank
+    leaderboard['rank'] = range(1, len(leaderboard) + 1)
+
+    return leaderboard

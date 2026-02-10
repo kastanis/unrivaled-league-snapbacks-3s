@@ -13,6 +13,7 @@ HANDMADE_DIR = DATA_DIR / "handmade"
 SOURCE_DIR = DATA_DIR / "source"
 PROCESSED_DIR = DATA_DIR / "processed"
 GAME_STATS_DIR = SOURCE_DIR / "game_stats"
+TOURNAMENT_STATS_DIR = SOURCE_DIR / "tournament_game_stats"
 
 
 @st.cache_data(ttl=3600)  # Cache for 1 hour
@@ -263,3 +264,56 @@ def load_transaction_log() -> Optional[pd.DataFrame]:
 def save_transaction_log(df: pd.DataFrame) -> None:
     """Save transaction history log."""
     save_csv(df, PROCESSED_DIR / "transaction_log.csv")
+
+
+@st.cache_data(ttl=3600)
+def load_tournament_scoring_config() -> pd.DataFrame:
+    """Load tournament scoring configuration (no assists)."""
+    return pd.read_csv(HANDMADE_DIR / "tournament_scoring_config.csv")
+
+
+def load_tournament_game_stats(round_num: Optional[int] = None) -> pd.DataFrame:
+    """Load tournament game stats, optionally filtered by round."""
+    all_stats = []
+
+    # Ensure directory exists
+    TOURNAMENT_STATS_DIR.mkdir(parents=True, exist_ok=True)
+
+    if round_num:
+        # Load specific round
+        pattern = f"round_{round_num}.csv"
+        files = list(TOURNAMENT_STATS_DIR.glob(pattern))
+    else:
+        # Load all tournament stats
+        files = list(TOURNAMENT_STATS_DIR.glob("round_*.csv"))
+
+    for file in sorted(files):
+        df = pd.read_csv(file)
+        # Extract round number from filename
+        round_n = int(file.stem.split('_')[1])
+        df['round'] = round_n
+        all_stats.append(df)
+
+    if all_stats:
+        return pd.concat(all_stats, ignore_index=True)
+    return pd.DataFrame()
+
+
+def save_tournament_game_stats(df: pd.DataFrame, round_num: int) -> None:
+    """Save tournament game stats for a specific round."""
+    TOURNAMENT_STATS_DIR.mkdir(parents=True, exist_ok=True)
+    filename = f"round_{round_num}.csv"
+    save_csv(df, TOURNAMENT_STATS_DIR / filename)
+
+
+def load_tournament_scores() -> Optional[pd.DataFrame]:
+    """Load calculated tournament fantasy points."""
+    path = PROCESSED_DIR / "tournament_scores.csv"
+    if path.exists():
+        return pd.read_csv(path)
+    return None
+
+
+def save_tournament_scores(df: pd.DataFrame) -> None:
+    """Save tournament scores."""
+    save_csv(df, PROCESSED_DIR / "tournament_scores.csv")

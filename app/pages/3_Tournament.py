@@ -1,4 +1,4 @@
-"""1-on-1 Tournament - Manager nominations and bracket."""
+"""1-on-1 Tournament - Manager picks and leaderboard."""
 
 import streamlit as st
 import sys
@@ -8,7 +8,7 @@ import pandas as pd
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from etl import data_loader, draft_engine, standings_updater
+from etl import data_loader, score_calculator
 
 st.set_page_config(page_title="Tournament", page_icon="🏆")
 
@@ -16,240 +16,198 @@ st.title("🏆 1-on-1 Tournament")
 
 st.markdown("""
 **Format:**
-- Each manager nominates 1 player from their roster
-- Seeding based on regular season standings (Rank #1 vs #8, #2 vs #7, etc.)
-- Single elimination bracket
-- **Head-to-head matchups:** Winner = player with most fantasy points in tournament round games
-- Uses same scoring as regular season (points, rebounds, assists, steals, blocks, etc.)
+- Each manager picked 1 player for the Unrivaled 1-on-1 Tournament
+- Scoring: Same as regular season **minus assists** (no AST points)
+- **Winner:** Manager whose pick has the highest total fantasy points across all tournament rounds
 """)
 
 st.divider()
 
 # Load data
 managers = data_loader.load_managers()
+players = data_loader.load_players()
 tournament_picks = data_loader.load_tournament_picks()
 
 # Tabs
-tab1, tab2, tab3 = st.tabs(["Make Nomination", "View Bracket", "Admin - Enter Results"])
+tab1, tab2, tab3 = st.tabs(["Manager Picks", "Leaderboard", "Admin - Enter Stats"])
 
 with tab1:
-    st.header("Nominate Your Player")
+    st.header("Manager Picks")
 
-    # Manager selection
-    manager_options = {
-        f"{row['manager_name']} ({row['team_name']})": row['manager_id']
-        for _, row in managers.iterrows()
-    }
+    if tournament_picks is None or tournament_picks.empty:
+        st.warning("No tournament picks have been recorded yet.")
+    else:
+        # Build display table
+        picks_display = tournament_picks.merge(managers, on='manager_id')
+        picks_display = picks_display.merge(
+            players[['player_id', 'player_name', 'team']],
+            on='player_id'
+        )
 
-    selected_manager = st.selectbox(
-        "Select Your Team:",
-        options=["-- Select Manager --"] + list(manager_options.keys())
-    )
+        # Format for display
+        display_df = picks_display[['team_name', 'player_name', 'team']].copy()
+        display_df.columns = ['Fantasy Team', 'Player Pick', 'Unrivaled Team']
 
-    if selected_manager != "-- Select Manager --":
-        manager_id = manager_options[selected_manager]
+        st.dataframe(display_df, hide_index=True, use_container_width=True)
 
-        # Check if already nominated
-        if tournament_picks is not None:
-            existing_pick = tournament_picks[tournament_picks['manager_id'] == manager_id]
-        else:
-            existing_pick = pd.DataFrame()
-
-        if not existing_pick.empty:
-            # Show current nomination
-            player_id = existing_pick['player_id'].iloc[0]
-            players = data_loader.load_players()
-            player_result = players[players['player_id'] == player_id]['player_name']
-            if player_result.empty:
-                st.error(f"❌ Player ID {player_id} not found!")
-                st.stop()
-
-            player_name = player_result.iloc[0]
-            st.success(f"✅ You have nominated: **{player_name}**")
-
-            if st.button("Change Nomination"):
-                # Remove existing pick
-                if tournament_picks is not None:
-                    updated_picks = tournament_picks[tournament_picks['manager_id'] != manager_id]
-                    data_loader.save_tournament_picks(updated_picks)
-                    st.success("Nomination cleared. Select a new player below.")
-                    st.rerun()
-        else:
-            # Make nomination
-            st.subheader("Select Player from Your Roster")
-
-            roster = draft_engine.get_manager_roster(manager_id)
-
-            if not roster.empty:
-                player_options = {
-                    f"{row['player_name']} ({row['team']})": row['player_id']
-                    for _, row in roster.iterrows()
-                }
-
-                selected_player = st.selectbox(
-                    "Choose Player:",
-                    options=list(player_options.keys())
-                )
-
-                if st.button("Nominate This Player", type="primary"):
-                    player_id = player_options[selected_player]
-
-                    # Save nomination
-                    if tournament_picks is None:
-                        tournament_picks = pd.DataFrame()
-
-                    new_pick = pd.DataFrame([{
-                        'manager_id': manager_id,
-                        'player_id': player_id,
-                        'seed': 0  # Will be determined after all picks
-                    }])
-
-                    updated_picks = pd.concat([tournament_picks, new_pick], ignore_index=True)
-                    data_loader.save_tournament_picks(updated_picks)
-
-                    st.success(f"Player nominated! Seeding will be determined once all managers have picked.")
-                    st.rerun()
-            else:
-                st.info("No roster found. Complete draft first.")
+        st.info(f"**{len(tournament_picks)}** managers have made their picks.")
 
 with tab2:
-    st.header("Tournament Bracket")
+    st.header("Tournament Leaderboard")
 
-    # Check if all nominations are in
-    if tournament_picks is None or len(tournament_picks) < 8:
-        remaining = 8 - (len(tournament_picks) if tournament_picks is not None else 0)
-        st.info(f"Waiting for {remaining} more nomination(s)...")
+    # Get leaderboard
+    leaderboard = score_calculator.get_tournament_leaderboard()
 
-        # Show who has picked
-        if tournament_picks is not None and not tournament_picks.empty:
-            st.subheader("Nominations Received:")
-            picks_with_details = tournament_picks.merge(managers, on='manager_id')
-            picks_with_details = picks_with_details.merge(
-                data_loader.load_players()[['player_id', 'player_name']],
-                on='player_id'
-            )
-
-            for _, row in picks_with_details.iterrows():
-                st.write(f"✅ {row['team_name']}: {row['player_name']}")
+    if leaderboard.empty:
+        st.warning("No tournament picks or scores available yet.")
     else:
-        # All picks in - generate bracket
-        st.success("All nominations received!")
+        # Check if any scores exist
+        has_scores = 'total_fp' in leaderboard.columns and leaderboard['total_fp'].sum() > 0
 
-        # Get standings for seeding
-        standings = standings_updater.get_standings_with_details()
+        if not has_scores:
+            st.info("Waiting for tournament stats to be uploaded...")
 
-        if standings.empty or len(standings) < 8:
-            st.warning("⚠️ Cannot generate bracket yet - standings not available or incomplete.")
-            st.info("Standings will be available after the first game stats are uploaded.")
-        else:
-            # Assign seeds based on rank
-            tournament_picks_with_seed = tournament_picks.copy()
+        # Build display columns
+        display_cols = ['rank', 'team_name', 'player_name', 'team']
 
-            for _, row in tournament_picks_with_seed.iterrows():
-                manager_id = row['manager_id']
-                rank_result = standings[standings['manager_id'] == manager_id]['rank']
-                if rank_result.empty:
-                    st.error(f"❌ Manager ID {manager_id} not found in standings!")
-                    st.stop()
+        # Add round columns if they exist
+        round_cols = [c for c in leaderboard.columns if c.startswith('round_') and c.endswith('_fp')]
+        round_cols_sorted = sorted(round_cols, key=lambda x: int(x.split('_')[1]))
+        display_cols.extend(round_cols_sorted)
 
-                rank = rank_result.iloc[0]
-                tournament_picks_with_seed.loc[
-                    tournament_picks_with_seed['manager_id'] == manager_id,
-                    'seed'
-                ] = rank
+        display_cols.append('total_fp')
 
-            # Merge with player/manager names
-            bracket = tournament_picks_with_seed.merge(managers, on='manager_id')
-            bracket = bracket.merge(
-                data_loader.load_players()[['player_id', 'player_name', 'team']],
-                on='player_id'
-            )
+        # Filter to existing columns
+        display_cols = [c for c in display_cols if c in leaderboard.columns]
 
-            bracket = bracket.sort_values('seed')
+        display_df = leaderboard[display_cols].copy()
 
-            # Verify we have all 8 seeds
-            unique_seeds = bracket['seed'].unique()
-            if len(unique_seeds) < 8 or not all(s in unique_seeds for s in range(1, 9)):
-                st.error("⚠️ Bracket seeding error - not all seeds (1-8) are assigned.")
-                st.info("This may happen if multiple managers have the same score. Upload more game stats to establish clear rankings.")
-                st.dataframe(bracket[['seed', 'team_name', 'player_name']])
-            else:
-                st.subheader("Seeded Bracket")
+        # Rename columns for display
+        rename_map = {
+            'rank': 'Rank',
+            'team_name': 'Fantasy Team',
+            'player_name': 'Player',
+            'team': 'Unrivaled Team',
+            'total_fp': 'Total FP'
+        }
+        # Add round renames
+        for col in round_cols_sorted:
+            round_num = col.split('_')[1]
+            rename_map[col] = f'R{round_num}'
 
-                # Quarterfinals (8 teams)
-                st.write("### Quarterfinals")
-                st.caption("Winner = Player with highest fantasy points in Quarterfinal games (all stats count: points, rebounds, assists, steals, blocks, etc.)")
+        display_df = display_df.rename(columns=rename_map)
 
-                col1, col2 = st.columns(2)
+        # Style the dataframe - highlight leader
+        def highlight_leader(row):
+            if row['Rank'] == 1 and has_scores:
+                return ['background-color: #ffd700'] * len(row)
+            return [''] * len(row)
 
-                with col1:
-                    st.write("**Matchup 1**")
-                    seed1_result = bracket[bracket['seed'] == 1]
-                    seed8_result = bracket[bracket['seed'] == 8]
-                    if seed1_result.empty or seed8_result.empty:
-                        st.error("❌ Missing seed 1 or 8 in bracket!")
-                    else:
-                        seed1 = seed1_result.iloc[0]
-                        seed8 = seed8_result.iloc[0]
-                        st.write(f"(1) {seed1['team_name']} - {seed1['player_name']}")
-                        st.write(f"(8) {seed8['team_name']} - {seed8['player_name']}")
+        styled_df = display_df.style.apply(highlight_leader, axis=1)
 
-                    st.write("**Matchup 2**")
-                    seed4_result = bracket[bracket['seed'] == 4]
-                    seed5_result = bracket[bracket['seed'] == 5]
-                    if seed4_result.empty or seed5_result.empty:
-                        st.error("❌ Missing seed 4 or 5 in bracket!")
-                    else:
-                        seed4 = seed4_result.iloc[0]
-                        seed5 = seed5_result.iloc[0]
-                        st.write(f"(4) {seed4['team_name']} - {seed4['player_name']}")
-                        st.write(f"(5) {seed5['team_name']} - {seed5['player_name']}")
+        st.dataframe(styled_df, hide_index=True, use_container_width=True)
 
-                with col2:
-                    st.write("**Matchup 3**")
-                    seed2_result = bracket[bracket['seed'] == 2]
-                    seed7_result = bracket[bracket['seed'] == 7]
-                    if seed2_result.empty or seed7_result.empty:
-                        st.error("❌ Missing seed 2 or 7 in bracket!")
-                    else:
-                        seed2 = seed2_result.iloc[0]
-                        seed7 = seed7_result.iloc[0]
-                        st.write(f"(2) {seed2['team_name']} - {seed2['player_name']}")
-                        st.write(f"(7) {seed7['team_name']} - {seed7['player_name']}")
-
-                    st.write("**Matchup 4**")
-                    seed3_result = bracket[bracket['seed'] == 3]
-                    seed6_result = bracket[bracket['seed'] == 6]
-                    if seed3_result.empty or seed6_result.empty:
-                        st.error("❌ Missing seed 3 or 6 in bracket!")
-                    else:
-                        seed3 = seed3_result.iloc[0]
-                        seed6 = seed6_result.iloc[0]
-                        st.write(f"(3) {seed3['team_name']} - {seed3['player_name']}")
-                        st.write(f"(6) {seed6['team_name']} - {seed6['player_name']}")
-
-                st.divider()
-
-                # Show full bracket table
-                display_bracket = bracket[['seed', 'team_name', 'player_name']].copy()
-                display_bracket.columns = ['Seed', 'Team', 'Player']
-
-                st.dataframe(display_bracket, hide_index=True, use_container_width=True)
+        if has_scores:
+            leader = leaderboard.iloc[0]
+            st.success(f"**Current Leader:** {leader['player_name']} ({leader['team_name']}) - {leader['total_fp']:.1f} FP")
 
 with tab3:
-    st.header("Admin - Enter Tournament Results")
+    st.header("Admin - Enter Tournament Stats")
 
     st.markdown("""
-    **How Tournament Works:**
-    - Each round is head-to-head
-    - Winner = Player who scores more fantasy points in that round's games
-    - Example: In Quarterfinals, player with highest fantasy points in QF games wins and advances
+    Upload stats for each tournament round. Stats should be in CSV format with columns:
+    - `player_id` - Player ID (required)
+    - `PTS` - Points scored
+    - `REB` - Rebounds
+    - `STL` - Steals
+    - `BLK` - Blocks
+    - `TOV` - Turnovers
+    - `PF` - Personal fouls
+    - `DUNK` - Dunks (optional)
+    - `GAME_WINNER` - Game winner bonus (optional)
 
-    **Admin Instructions:**
-    1. After each tournament round's games are complete
-    2. Compare fantasy points for each matchup
-    3. Record winners
-    4. Winners advance to next round
+    **Note:** Assists (AST) are NOT counted in tournament scoring.
     """)
 
-    st.info("(Results tracking interface to be added - for now track manually)")
+    # Round selection
+    round_num = st.selectbox(
+        "Select Round:",
+        options=[1, 2, 3, 4, 5],
+        format_func=lambda x: f"Round {x}"
+    )
+
+    # File upload
+    uploaded_file = st.file_uploader(
+        f"Upload Round {round_num} Stats (CSV)",
+        type=['csv'],
+        key=f"round_{round_num}_upload"
+    )
+
+    if uploaded_file is not None:
+        try:
+            df = pd.read_csv(uploaded_file)
+
+            st.subheader("Preview")
+            st.dataframe(df.head(10), use_container_width=True)
+
+            # Validate required columns
+            if 'player_id' not in df.columns:
+                st.error("Missing required column: player_id")
+            else:
+                # Validate player IDs
+                valid_player_ids = set(players['player_id'].tolist())
+                uploaded_ids = set(df['player_id'].tolist())
+                invalid_ids = uploaded_ids - valid_player_ids
+
+                if invalid_ids:
+                    st.error(f"Invalid player IDs: {invalid_ids}")
+                else:
+                    # Calculate fantasy points preview
+                    df_with_round = df.copy()
+                    df_with_round['round'] = round_num
+
+                    scores = score_calculator.calculate_tournament_fantasy_points(df_with_round)
+
+                    # Merge with player names for display
+                    scores_display = scores.merge(
+                        players[['player_id', 'player_name']],
+                        on='player_id'
+                    )
+                    scores_display = scores_display[['player_name', 'fantasy_points']].sort_values(
+                        'fantasy_points', ascending=False
+                    )
+                    scores_display.columns = ['Player', 'Fantasy Points']
+
+                    st.subheader(f"Calculated Fantasy Points (Round {round_num})")
+                    st.dataframe(scores_display, hide_index=True, use_container_width=True)
+
+                    # Save button
+                    if st.button(f"Save Round {round_num} Stats", type="primary"):
+                        # Save the stats
+                        data_loader.save_tournament_game_stats(df_with_round, round_num)
+
+                        # Recalculate all tournament scores
+                        score_calculator.update_tournament_scores()
+
+                        st.success(f"Round {round_num} stats saved and scores updated!")
+                        st.rerun()
+
+        except Exception as e:
+            st.error(f"Error reading file: {e}")
+
+    # Show existing stats
+    st.divider()
+    st.subheader("Uploaded Rounds")
+
+    existing_stats = data_loader.load_tournament_game_stats()
+
+    if existing_stats.empty:
+        st.info("No tournament stats uploaded yet.")
+    else:
+        rounds_uploaded = sorted(existing_stats['round'].unique())
+        st.write(f"**Rounds with stats:** {', '.join([f'Round {r}' for r in rounds_uploaded])}")
+
+        # Show summary per round
+        for r in rounds_uploaded:
+            round_stats = existing_stats[existing_stats['round'] == r]
+            st.caption(f"Round {r}: {len(round_stats)} player entries")

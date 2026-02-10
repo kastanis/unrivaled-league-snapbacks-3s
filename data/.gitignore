@@ -2,6 +2,7 @@
 !.gitignore
 !documentation
 !handmade
+!handmade/*.csv
 !html_reports
 !processed
 !processed/*.csv

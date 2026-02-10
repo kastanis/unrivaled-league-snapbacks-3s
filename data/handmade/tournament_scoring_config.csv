@@ -1,0 +1,9 @@
+stat_category,points_per_unit,description
+PTS,1.0,Total points scored
+REB,1.2,Total rebounds
+STL,2.0,Steals
+BLK,2.0,Blocks
+TOV,-1.0,Turnovers
+PF,-0.5,Personal fouls
+GAME_WINNER,1.5,Game-winning shot
+DUNK,0.5,Dunks
