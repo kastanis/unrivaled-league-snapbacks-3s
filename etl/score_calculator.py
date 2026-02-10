@@ -317,50 +317,53 @@ def get_tournament_leaderboard() -> pd.DataFrame:
     Returns:
         DataFrame with manager info, player info, and total FP
     """
-    # Load tournament picks and scores
-    picks = data_loader.load_tournament_picks()
-    scores = data_loader.load_tournament_scores()
+    try:
+        # Load tournament picks and scores
+        picks = data_loader.load_tournament_picks()
+        scores = data_loader.load_tournament_scores()
 
-    if picks is None or picks.empty:
+        if picks is None or len(picks) == 0:
+            return pd.DataFrame()
+
+        # Load reference data
+        managers = data_loader.load_managers()
+        players = data_loader.load_players()
+
+        # Build leaderboard
+        leaderboard = picks.merge(managers, on='manager_id')
+        leaderboard = leaderboard.merge(
+            players[['player_id', 'player_name', 'team']],
+            on='player_id'
+        )
+
+        # Add scores if available
+        if scores is not None and not scores.empty:
+            # Get total FP per player
+            player_totals = scores.groupby('player_id')['fantasy_points'].sum().reset_index()
+            player_totals.columns = ['player_id', 'total_fp']
+
+            # Get per-round breakdown
+            if 'round' in scores.columns:
+                round_scores = scores.pivot_table(
+                    index='player_id',
+                    columns='round',
+                    values='fantasy_points',
+                    aggfunc='sum'
+                ).reset_index()
+                round_scores.columns = ['player_id'] + [f'round_{int(c)}_fp' for c in round_scores.columns[1:]]
+                player_totals = player_totals.merge(round_scores, on='player_id', how='left')
+
+            leaderboard = leaderboard.merge(player_totals, on='player_id', how='left')
+            leaderboard['total_fp'] = leaderboard['total_fp'].fillna(0)
+        else:
+            leaderboard['total_fp'] = 0.0
+
+        # Sort by total FP descending
+        leaderboard = leaderboard.sort_values('total_fp', ascending=False).reset_index(drop=True)
+
+        # Add rank
+        leaderboard['rank'] = range(1, len(leaderboard) + 1)
+
+        return leaderboard
+    except Exception:
         return pd.DataFrame()
-
-    # Load reference data
-    managers = data_loader.load_managers()
-    players = data_loader.load_players()
-
-    # Build leaderboard
-    leaderboard = picks.merge(managers, on='manager_id')
-    leaderboard = leaderboard.merge(
-        players[['player_id', 'player_name', 'team']],
-        on='player_id'
-    )
-
-    # Add scores if available
-    if scores is not None and not scores.empty:
-        # Get total FP per player
-        player_totals = scores.groupby('player_id')['fantasy_points'].sum().reset_index()
-        player_totals.columns = ['player_id', 'total_fp']
-
-        # Get per-round breakdown
-        if 'round' in scores.columns:
-            round_scores = scores.pivot_table(
-                index='player_id',
-                columns='round',
-                values='fantasy_points',
-                aggfunc='sum'
-            ).reset_index()
-            round_scores.columns = ['player_id'] + [f'round_{int(c)}_fp' for c in round_scores.columns[1:]]
-            player_totals = player_totals.merge(round_scores, on='player_id', how='left')
-
-        leaderboard = leaderboard.merge(player_totals, on='player_id', how='left')
-        leaderboard['total_fp'] = leaderboard['total_fp'].fillna(0)
-    else:
-        leaderboard['total_fp'] = 0.0
-
-    # Sort by total FP descending
-    leaderboard = leaderboard.sort_values('total_fp', ascending=False).reset_index(drop=True)
-
-    # Add rank
-    leaderboard['rank'] = range(1, len(leaderboard) + 1)
-
-    return leaderboard
