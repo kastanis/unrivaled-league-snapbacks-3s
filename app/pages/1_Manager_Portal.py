@@ -73,8 +73,8 @@ if selected_option != "-- Select Manager --":
     with tab2:
         st.header("Set Daily Lineup")
 
-        # Date selector (default to today or season start, whichever is later)
-        default_date = max(date.today(), SEASON_START)
+        # Date selector (default to today, clamped within season range)
+        default_date = min(max(date.today(), SEASON_START), SEASON_END)
 
         lineup_date = st.date_input(
             "Select Date:",
